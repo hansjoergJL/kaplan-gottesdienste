@@ -1,0 +1,311 @@
+<?php
+    defined('ABSPATH') or die("Please use as described.");
+    
+  /**
+  * Plugin Name:  KaPlan Gottesdienste
+  * _Plugin URI: https://www.kaplan-software.de
+  * Description: Anzeige aktueller Gottesdienste aus KaPlan
+  * Version: 1.6.1
+  * Author: Peter Hellerhoff & Hans-Joerg Joedike
+  * Author URI: https://www.kaplan-software.de
+  * License: GPL2 or newer
+  * License URI:  https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:  kaplan-import
+ * GitHub Plugin URI: hansjoergjl/kaplan-gottesdienste
+ * GitHub Branch: main
+ * Requires PHP: 5.6
+ * Requires WP: 4.0
+ */
+
+  // Version 1.6.1  [Jö] 2024-04-26  Gemeindetermine (mode=GT)
+  // Version 1.6    [Jö] 2024-04-18  Zelebrantenangabe (Leitung=...)
+  // Version 1.5.1  [Jö] 2023-04-20  TE_Zusatz2 integriert
+  // Version 1.5    [Jö] 2023-04-09  Fällt-aus mit Kirchenname
+  // Version 1.4    [Jö] 2022-03-29  Wordpress 5.9.2 Kompatibilität
+  // Version 1.3.x  [Jö] 2021-02-05  http-Links im Zusatzfeld werden in kurzen "Internet"-Link umgeschrieben
+  // Version 1.0    [PH] 2021
+  
+
+class kaplan_kalender {
+    
+    // Hier wird die URL für die API-Abfrage als JSON zusammengesetzt
+    // Die Attribute aus dem Tag im WP-Beitrag kommen hier im Array $atts an.
+    // nur Kleinbuchstaben! 
+    private static function get_url($atts) {
+        $req = ($atts['secure'] == '0' ? 'http' : 'https') . '://' . $atts['server'];
+		if (substr($req, -1, 1) != '/')
+			$req .= '/';
+		$leitung = $atts['leitung'];  // Ausgabeformat Leitung: K / N / VN / V.N / TVN / TV.N (T=Titel V=Vorname N=Nachname K=Kuerzel)
+        $req .= 'get.asp?Arbeitsgruppe=' . $atts['arbeitsgruppe']
+            . '&Code=' . $atts['code']
+            . '&mode=' . $atts['mode']
+            . '&options=L' . $atts['options']
+            . '&type=json&req=plugin'
+            . ($atts['days'] ? ('&days=' . $atts['days']) : '');
+		return $req;
+    }
+
+
+    // Formatierung der Datumswerte mit führender Null
+    private static function add_zero($int) {
+        return $int < 10 ? ('0' . $int) : (string)$int;
+    }
+
+            
+    // Formatierung für die Uhrzeit bei abgsagten Terminen (rote Schrift)
+    private static function red($str, $red) {
+        if ($red)
+            return '<span style="color:red;">' . $str . '</span>';
+        else
+            return $str;
+    }    
+
+
+    // Formatierung für die korrekte Darstellung von Sonderzeichen als HTML-Codes
+    // zB   "<" => "&lt;"
+    private static function html($str, $nl2br=true) {
+        if ($nl2br)
+            return nl2br(htmlentities($str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+        return htmlentities($str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+	
+	// Formatierung des Leitungsnamens
+	// 
+	private static function format_leitung($Format, $Kuerzel, $Titel, $Vorname, $Nachname, $Ordensname, $LeitungGast, $Organisation) {
+		// Ausgabeformat Leitung: K / N / VN / V.N / TN / TVN / TV.N / O (T=Titel V=Vorname N=Nachname K=Kuerzel, O=Organisation)
+		if ('' . $Format == '')
+			return '';
+		if ($Format == 'K')  // Kürzel
+			return $Kuerzel;
+		if ($Ordensname)
+			return trim($Titel . ' ' . $Ordensname);
+		if ($Format == 'N')  // Nachname
+			return $Nachname;
+		if ($Format == 'VN')  // Vorname Nachname
+			return trim($Vorname . ' ' . $Nachname);
+		if ($Format == 'V.N')  // V. Nachname
+			return trim(substr($Vorname, 0, 1) . '. ' . $Nachname, ' .');
+		if ($Format == 'TN')   // Titel Nachname
+			return trim($Titel . ' ' . $Nachname);
+		if ($Format == 'TVN')   // Titel Vorname Nachname
+			return trim($Titel . ' ' . $Vorname . ' ' . $Nachname);
+		if ($Format == 'TV.N')  // Titel V. Nachname
+			return trim($Titel . ' ' . substr($Vorname . ' ', 0, 1) . '. ' . $Nachname, ' .');
+		if ($Format == 'O') {  // Organisation
+			if ($Organisation != '')
+				return $Organisation;
+			return trim(substr($Vorname . ' ', 0, 1) . '. ' . $Nachname, ' .');
+		}
+		return $Nachname;
+	}
+	
+	
+	// KaPlan spezifische Ersetzungen
+	private static function spezial($str) {
+		$str = str_replace('+', '&dagger;', $str);  // römisches Kreuz
+		return $str;
+	}
+	
+	// Links http..... umranden mit <a href=".....">...</a>
+	private static function handle_link($str) {
+		$pos = stripos($str, 'http', 0);
+		if (is_numeric($pos)) {
+			$first = '';
+			if ($pos > 0)
+				$first = substr($str, 0, $pos);
+			$rest = '';
+			$pos2 = strpos($str, ' ', $pos);
+			if (is_numeric($pos2)) {
+				$rest = substr($str, $pos2);
+				$link = substr($str, $pos, $pos2 - $pos);
+			}
+			else
+				$link = substr($str, $pos);
+			$str = self::spezial(self::html($first)) . '<a href="' . $link . '" target="_new">Internet</a>' . self::spezial(self::html($rest));
+		}
+		return $str;
+	}
+
+
+    // In dieser Funktion wird die eigentliche Ausgabe in der Variable $html zusammengesetzt.
+    public static function get_html($atts) {
+        $url = self::get_url($atts);
+		$options = $atts['options'];
+
+        $html = '';
+        
+        $json = file_get_contents($url);
+        $data = json_decode($json);
+        // $data enthält nun alle Termine als Array von Objekten
+        
+        $html .= '<div class="kaplan-export">';
+        $html .= '<dl class="kalender">';
+
+        if (is_null($data)) {
+            $html .= 'Es liegen derzeit keine Termine vor.';
+        }
+        else {
+            $last_date = false;
+			$Last_ANID = false;
+            foreach ($data as $key=>$termin) {
+                // $termin ist ein Objekt mit den Datenfeldern aus der JSON Abfrage
+                
+				$Template = $atts['template'];
+				$Leitung = '' . $atts['leitung'];  // Ausgabeformat Leitung: K / N / VN / V.N / TVN / TV.N (T=Titel V=Vorname N=Nachname K=Kuerzel)
+				if ($atts['mode'] == 'A' || $atts['mode'] == 'B') {
+					$Datum = $termin->TE_Datum;
+					$Tagesbez = (isset($termin->Tagesbez) ? $termin->Tagesbez : '');
+					$Uhrzeit = self::add_zero($termin->TE_von_hh) . '.' . self::add_zero($termin->TE_von_mm);
+					$UhrzeitBis = '';
+					$Anlass = $termin->TE_Bez;
+					$FaelltAus = $termin->TE_FaelltAus;
+					$Zusatz = (isset($termin->Zusatz) ? $termin->Zusatz : '');
+					if ($Zusatz != '' && isset($termin->TE_ZusatzNichtOeffentlich) && $termin->TE_ZusatzNichtOeffentlich)
+						$Zusatz = '';
+					$Zusatz2 = (isset($termin->TE_Zusatz2) ? $termin->TE_Zusatz2 : '');
+					$Raum = $termin->RA_Bez;
+					if ($Leitung != '') {
+						$PE_Kuerzel = (isset($termin->PE_Kuerzel) ? $termin->PE_Kuerzel : '');
+						$PE_Titel = (isset($termin->PE_Titel) ? $termin->PE_Titel : '');
+						$PE_Vorname = (isset($termin->PE_Vorname) ? $termin->PE_Vorname : '');
+						$PE_Nachname = (isset($termin->PE_Nachname) ? $termin->PE_Nachname : '');
+						$PE_Ordensname = (isset($termin->PE_Ordensname) ? $termin->PE_Ordensname : '');
+						$PE_LeitungGast = (isset($termin->PE_LeitungGast) ? $termin->PE_LeitungGast : '');
+						$PE_Organisation = '';
+						$Ltg = self::format_leitung($Leitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $PE_LeitungGast, $PE_Organisation);
+					}
+					else 
+						$Ltg = '';
+					$RegLink = (isset($termin->RegLink) ? $termin->RegLink : '');
+				}
+				else if ($atts['mode'] == "VT") {
+					//"Wochentag": "Freitag", 
+					$Datum = $termin->Datum;  //"Datum": "04/26/2024", 
+					$Uhrzeit = $termin->ZeitVon;  //"ZeitVon": "18:00", 
+					$UhrzeitBis = $termin->ZeitBis;  //"ZeitBis": "21:00", 
+					$Anlass = $termin->Anlass;  //"Anlass": "Seniorentreff", 
+					$FaelltAus = false;
+					$Zusatz = (isset($termin->Zusatz) ? $termin->Zusatz : '');	//"Zusatz": "mit Diavortrag von Hr. X", 
+					//"Gebaeude": "Jugendheim Nordstadt", 
+					$Zusatz2 = (isset($termin->Langtext) ? $termin->Langtext : '');  //"Langtext": "Diesmal etwas ganz Besonderes: Kaffee & Kuchen!", 
+					$Raum = $termin->Raum;  //"Raum": "Jugendheim -  Gruppenraum EG 1", 
+					if ($Leitung != '') {
+						$PE_Kuerzel = '';
+						$PE_Titel = (isset($termin->Titel) ? $termin->Titel : '');
+						$PE_Vorname = (isset($termin->Vorname) ? $termin->Vorname : '');
+						$PE_Nachname = (isset($termin->Nachname) ? $termin->Nachname : '');
+						$PE_Ordensname = (isset($termin->Ordensname) ? $termin->Ordensname : '');
+						$PE_Organisation = (isset($termin->Organisation) ? $termin->Organisation : '');
+						$PE_LeitungGast = '';
+						$Ltg = self::format_leitung($Leitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $PE_LeitungGast, $PE_Organisation);
+					}
+					else 
+						$Ltg = '';
+					$RegLink = (isset($termin->RegLink) ? $termin->RegLink : '');
+					
+					//"AN_ID": 3388
+					if ($Last_ANID == $termin->AN_ID)  // nur 1 Hauptraum anzeigen
+						$Template = "-";
+					else
+						$Last_ANID = $termin->AN_ID;
+				}
+				
+				if ($Template == '1') {   // Standard-Template
+					if ($Datum != $last_date) {
+						// Neues Datum als Überschrift anzeigen
+						$Date_components = explode('/', $Datum);
+						$Date = new DateTime_german();
+						$Date->setDate($Date_components[2], $Date_components[0], $Date_components[1]);
+						if ($key) 
+							$html .= '</dd>';
+						$html .= '<dt>' . $Date->format('l, d. F Y');
+						if (strpos($options, 'E') !== false) {
+							if ($Tagesbez != '')
+								$html .= '&nbsp;-&nbsp;' . $Tagesbez;						
+						}
+						$html .= '</dt>';
+						$html .= '<dd>';
+						$last_date = $Datum;
+					}
+
+					// Uhrzeit
+					$s = $Uhrzeit;
+					if (strpos($options, 'U') !== false)
+						$s .= '&nbsp;Uhr';
+					$html .= self::red($s, $FaelltAus);
+					$html .= '&nbsp;&nbsp;';
+
+					// Gottesdienst / Veranstaltung und Zusatz
+					$html .= '<b>' . self::html($Anlass) . '</b>';
+					if ($Zusatz != '') {
+						$s = self::handle_link($Zusatz);
+						if ($s != '')
+							$html .= ' ' . $s;
+					}
+					//if ($Zusatz2)
+					//	$html .= '<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' . self::handle_link($Zusatz2);
+
+					// Kirche / Raum / Leitung
+					$s = '';
+					if (strpos($options, 'V-') == false)
+						$s = $Raum;
+					if ($Ltg != '')
+						$s .= ', ' . $Ltg;
+					if ($s != '')
+						$html .= ' (<i>' . self::html(trim($s, ', ')) . '</i>)';
+
+					if (!$FaelltAus) {
+						if ($Zusatz2 != '')
+							$html .= '<p style="margin: 0">' . self::handle_link($Zusatz2) . '</p>';
+						// Anmelde-Link
+						if ($RegLink != '')
+							$html .= '  <a href="' . $RegLink . '" target="_blank">Anmeldung</a>';				
+					}
+					else  // Fällt aus!!
+						$html .= self::red(' f&auml;llt aus!!', true); 
+
+					if (!str_ends_with($html, '</p>'))
+						$html .= '<br />';
+				}
+			}
+            $html .= '<br>&nbsp;</dd>';
+        }
+        $html .= '</dl>';
+        $html .= '</div>';
+
+        return $html;
+    }
+}
+
+
+class DateTime_german extends DateTime {
+
+    public function format($format) {
+        return 
+			str_replace(
+				array('January','February','March','May','June','July','October','December'),
+				array('Januar','Februar','März','Mai','Juni','Juli','Oktober','Dezember'),
+			str_replace(
+				array('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday',),
+				array('Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag',),
+				parent::format($format)));
+    }
+}
+
+
+function kaplan_kalender($atts = [], $content = null, $tag = '') {
+    // normalize attribute keys, lowercase
+    $atts = array_change_key_case((array)$atts, CASE_LOWER);
+    // override default attributes with user attributes
+    $atts = array_merge(
+        [   'mode' => 'B',        // => A=Kirchengruppiert, B=Chronologisch
+            'options' => false,   // => keine Optionen
+			'secure' => '1',      // => https
+			'leitung' => false,   // => ohne Ausgabe Leitung
+		 	'template' => '1'     // => Standard-Ausgabeformat Datum + 1 Zeile Daten
+        ],  $atts);
+    return kaplan_kalender::get_html($atts);
+}
+
+
+add_shortcode('ausgabe_kaplan', 'kaplan_kalender');
