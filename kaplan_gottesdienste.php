@@ -5,7 +5,7 @@
   * Plugin Name:  KaPlan Gottesdienste
   * _Plugin URI: https://www.kaplan-software.de
   * Description: Anzeige aktueller Gottesdienste aus KaPlan
-  * Version: 1.6.1
+ * Version: 1.6.2
   * Author: Peter Hellerhoff & Hans-Joerg Joedike
   * Author URI: https://www.kaplan-software.de
   * License: GPL2 or newer
@@ -17,6 +17,7 @@
  * Requires WP: 4.0
  */
 
+  // Version 1.6.2  [Jö] 2025-01-07  Parameter validation, error handling
   // Version 1.6.1  [Jö] 2024-04-26  Gemeindetermine (mode=GT)
   // Version 1.6    [Jö] 2024-04-18  Zelebrantenangabe (Leitung=...)
   // Version 1.5.1  [Jö] 2023-04-20  TE_Zusatz2 integriert
@@ -129,13 +130,39 @@ class kaplan_kalender {
 
     // In dieser Funktion wird die eigentliche Ausgabe in der Variable $html zusammengesetzt.
     public static function get_html($atts) {
+        // Validate required parameters
+        if (empty($atts['server'])) {
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Server-Parameter ist erforderlich</p></div>';
+        }
+        if (empty($atts['arbeitsgruppe'])) {
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Arbeitsgruppe-Parameter ist erforderlich</p></div>';
+        }
+        if (empty($atts['code'])) {
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Code-Parameter ist erforderlich</p></div>';
+        }
+        
         $url = self::get_url($atts);
-		$options = $atts['options'];
+		$options = $atts['options'] ?? '';
 
         $html = '';
         
-        $json = file_get_contents($url);
+        // Add error handling for network requests
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 10,
+                'ignore_errors' => true
+            ]
+        ]);
+        
+        $json = @file_get_contents($url, false, $context);
+        if ($json === false) {
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Verbindung zum KaPlan-Server fehlgeschlagen. Bitte überprüfen Sie die Server-Einstellungen.</p></div>';
+        }
+        
         $data = json_decode($json);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Ungültige Antwort vom KaPlan-Server.</p></div>';
+        }
         // $data enthält nun alle Termine als Array von Objekten
         
         $html .= '<div class="kaplan-export">';
@@ -299,10 +326,14 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
     // override default attributes with user attributes
     $atts = array_merge(
         [   'mode' => 'B',        // => A=Kirchengruppiert, B=Chronologisch
-            'options' => false,   // => keine Optionen
+            'options' => '',      // => keine Optionen
 			'secure' => '1',      // => https
-			'leitung' => false,   // => ohne Ausgabe Leitung
-		 	'template' => '1'     // => Standard-Ausgabeformat Datum + 1 Zeile Daten
+			'leitung' => '',      // => ohne Ausgabe Leitung
+		 	'template' => '1',    // => Standard-Ausgabeformat Datum + 1 Zeile Daten
+			'server' => '',       // => KaPlan Server
+			'arbeitsgruppe' => '', // => Arbeitsgruppe
+			'code' => '',         // => Zugriffscode
+			'days' => ''          // => Anzahl Tage
         ],  $atts);
     return kaplan_kalender::get_html($atts);
 }
