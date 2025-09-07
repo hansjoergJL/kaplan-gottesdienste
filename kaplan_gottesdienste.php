@@ -11,7 +11,7 @@
   * License: GPL2 or newer
   * License URI:  https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:  kaplan-import
- * GitHub Plugin URI: hansjoergjl/kaplan-gottesdienste
+ * GitHub Plugin URI: hansjoergJL/kaplan-gottesdienste
  * GitHub Branch: main
  * Requires PHP: 5.6
  * Requires WP: 4.0
