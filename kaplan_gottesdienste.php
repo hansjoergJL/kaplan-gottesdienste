@@ -5,7 +5,7 @@
   * Plugin Name:  KaPlan Gottesdienste
   * _Plugin URI: https://www.kaplan-software.de
   * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.6.2
+ * Version: 1.6.3
   * Author: Peter Hellerhoff & Hans-Joerg Joedike
   * Author URI: https://www.kaplan-software.de
   * License: GPL2 or newer
@@ -13,10 +13,11 @@
  * Text Domain:  kaplan-import
  * GitHub Plugin URI: hansjoergJL/kaplan-gottesdienste
  * GitHub Branch: main
- * Requires PHP: 5.6
+ * Requires PHP: 7.4
  * Requires WP: 4.0
  */
 
+  // Version 1.6.3  [Jö] 2025-01-07  PHP 8+ compatibility, security improvements
   // Version 1.6.2  [Jö] 2025-01-07  Parameter validation, error handling
   // Version 1.6.1  [Jö] 2024-04-26  Gemeindetermine (mode=GT)
   // Version 1.6    [Jö] 2024-04-18  Zelebrantenangabe (Leitung=...)
@@ -101,6 +102,14 @@ class kaplan_kalender {
 	}
 	
 	
+	// Polyfill für str_ends_with (PHP 8.0+)
+	private static function str_ends_with($haystack, $needle) {
+		if (function_exists('str_ends_with')) {
+			return str_ends_with($haystack, $needle);
+		}
+		return substr($haystack, -strlen($needle)) === $needle;
+	}
+	
 	// KaPlan spezifische Ersetzungen
 	private static function spezial($str) {
 		$str = str_replace('+', '&dagger;', $str);  // römisches Kreuz
@@ -122,7 +131,7 @@ class kaplan_kalender {
 			}
 			else
 				$link = substr($str, $pos);
-			$str = self::spezial(self::html($first)) . '<a href="' . $link . '" target="_new">Internet</a>' . self::spezial(self::html($rest));
+			$str = self::spezial(self::html($first)) . '<a href="' . $link . '" target="_blank" rel="noopener noreferrer">Internet</a>' . self::spezial(self::html($rest));
 		}
 		return $str;
 	}
@@ -146,17 +155,19 @@ class kaplan_kalender {
 
         $html = '';
         
-        // Add error handling for network requests
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 10,
-                'ignore_errors' => true
-            ]
+        // Use WordPress HTTP API for better compatibility
+        $response = wp_remote_get($url, [
+            'timeout' => 10,
+            'user-agent' => 'KaPlan WordPress Plugin/1.6.2'
         ]);
         
-        $json = @file_get_contents($url, false, $context);
-        if ($json === false) {
-            return '<div class="kaplan-export"><p style="color: red;">Fehler: Verbindung zum KaPlan-Server fehlgeschlagen. Bitte überprüfen Sie die Server-Einstellungen.</p></div>';
+        if (is_wp_error($response)) {
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Verbindung zum KaPlan-Server fehlgeschlagen. ' . esc_html($response->get_error_message()) . '</p></div>';
+        }
+        
+        $json = wp_remote_retrieve_body($response);
+        if (empty($json)) {
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Keine Antwort vom KaPlan-Server erhalten.</p></div>';
         }
         
         $data = json_decode($json);
@@ -286,12 +297,12 @@ class kaplan_kalender {
 							$html .= '<p style="margin: 0">' . self::handle_link($Zusatz2) . '</p>';
 						// Anmelde-Link
 						if ($RegLink != '')
-							$html .= '  <a href="' . $RegLink . '" target="_blank">Anmeldung</a>';				
+							$html .= '  <a href="' . esc_url($RegLink) . '" target="_blank" rel="noopener noreferrer">Anmeldung</a>';
 					}
 					else  // Fällt aus!!
 						$html .= self::red(' f&auml;llt aus!!', true); 
 
-					if (!str_ends_with($html, '</p>'))
+					if (!self::str_ends_with($html, '</p>'))
 						$html .= '<br />';
 				}
 			}
