@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * _Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.6.5
+ * Version: 1.6.6
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -17,6 +17,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Requires WP: 4.0
  */
 
+// Version 1.6.6  [Jö] 2025-01-08  Enhanced debugging, diagnostic shortcode
 // Version 1.6.5  [Jö] 2025-01-08  Debug support, attribute handling fixes
 // Version 1.6.4  [Jö] 2025-01-07  Code formatting, consistent indentation
 // Version 1.6.3  [Jö] 2025-01-07  PHP 8+ compatibility, security improvements
@@ -156,7 +157,14 @@ class kaplan_kalender {
         
         // Validate required parameters
         if (empty($atts['server'])) {
-            $debug_info = defined('WP_DEBUG') && WP_DEBUG ? ' (Debug: Available keys: ' . implode(', ', array_keys($atts)) . ')' : '';
+            $debug_info = '';
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                $debug_keys = [];
+                foreach ($atts as $key => $value) {
+                    $debug_keys[] = $key . '="' . $value . '"';
+                }
+                $debug_info = ' (Debug: ' . implode(', ', $debug_keys) . ')';
+            }
             return '<div class="kaplan-export"><p style="color: red;">Fehler: Server-Parameter ist erforderlich' . $debug_info . '</p></div>';
         }
         if (empty($atts['arbeitsgruppe'])) {
@@ -384,3 +392,30 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
 }
 
 add_shortcode('ausgabe_kaplan', 'kaplan_kalender');
+
+// Debug shortcode for testing (remove in production)
+function kaplan_debug_shortcode($atts) {
+    if (!defined('WP_DEBUG') || !WP_DEBUG) {
+        return 'Debug mode disabled';
+    }
+    
+    $output = '<div style="background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">';
+    $output .= '<h4>KaPlan Debug Output:</h4>';
+    $output .= '<strong>Raw attributes:</strong><br>';
+    
+    if (empty($atts)) {
+        $output .= 'No attributes received!';
+    } else {
+        foreach ($atts as $key => $value) {
+            $output .= sprintf('%s = "%s" (length: %d)<br>', 
+                esc_html($key), 
+                esc_html($value), 
+                strlen($value)
+            );
+        }
+    }
+    
+    $output .= '</div>';
+    return $output;
+}
+add_shortcode('kaplan_debug', 'kaplan_debug_shortcode');
