@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * _Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.6.8
+ * Version: 1.6.9
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -17,6 +17,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Requires WP: 4.0
  */
 
+// Version 1.6.9  [Jö] 2025-01-08  Fix regex pattern syntax error
 // Version 1.6.8  [Jö] 2025-01-08  Fix PHP syntax errors, simplify Unicode handling
 // Version 1.6.7  [Jö] 2025-01-08  Fix smart quotes, positional argument parsing
 // Version 1.6.6  [Jö] 2025-01-08  Enhanced debugging, diagnostic shortcode
@@ -401,7 +402,7 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
         if (is_int($k) || ctype_digit((string)$k)) {
             $line = kaplan_kalender::normalize_quotes(trim((string)$v));
             // Expect pattern key="value" or key='value'
-            if (preg_match('/^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*([\"\'])(.*?)\2$/', $line, $m)) {
+            if (preg_match('/^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(["\'])(.*?)\2$/', $line, $m)) {
                 $key = strtolower($m[1]);
                 $val = $m[3];
                 // Only set if not already provided properly
