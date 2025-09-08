@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * _Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.6.4
+ * Version: 1.6.5
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -17,6 +17,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Requires WP: 4.0
  */
 
+// Version 1.6.5  [Jö] 2025-01-08  Debug support, attribute handling fixes
 // Version 1.6.4  [Jö] 2025-01-07  Code formatting, consistent indentation
 // Version 1.6.3  [Jö] 2025-01-07  PHP 8+ compatibility, security improvements
 // Version 1.6.2  [Jö] 2025-01-07  Parameter validation, error handling
@@ -148,9 +149,15 @@ class kaplan_kalender {
 
     // In dieser Funktion wird die eigentliche Ausgabe in der Variable $html zusammengesetzt.
     public static function get_html($atts) {
+        // Debug: Show received attributes (remove in production)
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('KaPlan Plugin - Received attributes: ' . print_r($atts, true));
+        }
+        
         // Validate required parameters
         if (empty($atts['server'])) {
-            return '<div class="kaplan-export"><p style="color: red;">Fehler: Server-Parameter ist erforderlich</p></div>';
+            $debug_info = defined('WP_DEBUG') && WP_DEBUG ? ' (Debug: Available keys: ' . implode(', ', array_keys($atts)) . ')' : '';
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Server-Parameter ist erforderlich' . $debug_info . '</p></div>';
         }
         if (empty($atts['arbeitsgruppe'])) {
             return '<div class="kaplan-export"><p style="color: red;">Fehler: Arbeitsgruppe-Parameter ist erforderlich</p></div>';
@@ -347,8 +354,14 @@ class DateTime_german extends DateTime {
 }
 
 function kaplan_kalender($atts = [], $content = null, $tag = '') {
-    // normalize attribute keys, lowercase
+    // Debug: Show raw attributes before processing
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('KaPlan Plugin - Raw shortcode attributes: ' . print_r($atts, true));
+    }
+    
+    // normalize attribute keys, lowercase (WordPress converts them automatically, but let's be explicit)
     $atts = array_change_key_case((array)$atts, CASE_LOWER);
+    
     // override default attributes with user attributes
     $atts = array_merge(
         [   'mode' => 'B',        // => A=Kirchengruppiert, B=Chronologisch
@@ -361,6 +374,12 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
             'code' => '',         // => Zugriffscode
             'days' => ''          // => Anzahl Tage
         ],  $atts);
+    
+    // Debug: Show final processed attributes
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('KaPlan Plugin - Final processed attributes: ' . print_r($atts, true));
+    }
+    
     return kaplan_kalender::get_html($atts);
 }
 
