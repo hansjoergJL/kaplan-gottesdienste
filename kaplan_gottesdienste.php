@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * _Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.6.7
+ * Version: 1.6.8
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -17,6 +17,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Requires WP: 4.0
  */
 
+// Version 1.6.8  [Jö] 2025-01-08  Fix PHP syntax errors, simplify Unicode handling
 // Version 1.6.7  [Jö] 2025-01-08  Fix smart quotes, positional argument parsing
 // Version 1.6.6  [Jö] 2025-01-08  Enhanced debugging, diagnostic shortcode
 // Version 1.6.5  [Jö] 2025-01-08  Debug support, attribute handling fixes
@@ -130,18 +131,22 @@ class kaplan_kalender {
     
     // Hilfsfunktion: Typografische Anführungszeichen in gerade Anführungszeichen wandeln
     private static function normalize_quotes($str) {
-        $search = [
-            "\u{201C}", "\u{201D}", "\u{201E}", "\u{00AB}", "\u{00BB}", "\u{2033}", // “ ” „ « » ″
-            "\u{2018}", "\u{2019}", "\u{2032}" // ‘ ’ ′
-        ];
-        $replace = ['"', '"', '"', '"', '"', '"', "'", "'", "'"];
-        // Fallback: direct bytes for some environments
-        $str = str_replace(["“","”","„","«","»","″","‘","’","′"], ['"','"','"','"','"','"',"'","'","'"], $str);
-        // Unicode escape replacement
-        return str_replace($search, $replace, $str);
+        // Replace common smart quotes with straight quotes
+        $replacements = array(
+            '“' => '"',  // left double quotation mark
+            '”' => '"',  // right double quotation mark
+            '„' => '"',  // double low-9 quotation mark
+            '‘' => "'", // left single quotation mark
+            '’' => "'", // right single quotation mark
+            '«' => '"',  // left-pointing double angle quotation mark
+            '»' => '"',  // right-pointing double angle quotation mark
+            '″' => '"',  // double prime
+            '′' => "'"  // prime
+        );
+        return str_replace(array_keys($replacements), array_values($replacements), $str);
     }
 
-    // Links http..... umranden mit <a href=\".....\">...</a>
+    // Links http..... umranden mit <a href=".....">...</a>
     private static function handle_link($str) {
         $pos = stripos($str, 'http', 0);
         if (is_numeric($pos)) {
