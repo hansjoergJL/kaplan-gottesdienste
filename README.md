@@ -13,12 +13,16 @@ A WordPress plugin that displays current church services and community events fr
   - Chronological listing (default)
   - Church-grouped organization
   - Community events display
+- **Multiple Templates**: 
+  - Template="1": Traditional single-line format
+  - Template="2": **NEW!** Two-column table layout with merged date headers
 - **German Localization**: Native German date/time formatting and language support
-- **Customizable Output**: Multiple formatting options and templates
+- **Customizable Output**: Multiple formatting options and display templates
 - **Service Management**: Displays cancelled services with clear visual indicators
 - **Event Registration**: Supports registration links for community events
 - **Secure Connections**: Supports both HTTP and HTTPS API connections
 - **Mobile Responsive**: Clean HTML output that works on all devices
+- **Automatic Updates**: Built-in GitHub release integration with one-click updates
 
 ## Installation
 
@@ -63,7 +67,7 @@ Add church services to any post or page using the shortcode:
     options="LU" 
     secure="1" 
     leitung="VN" 
-    template="1" 
+    template="2"
     days="30"
 ]
 ```
@@ -79,7 +83,7 @@ Add church services to any post or page using the shortcode:
 | `options` | `false` | Display options | `L` = Show leadership<br>`U` = Show "Uhr" with times<br>`E` = Show day descriptions<br>`V-` = Hide venue |
 | `secure` | `1` | Connection type | `1` = HTTPS<br>`0` = HTTP |
 | `leitung` | `false` | Leadership display format | `K` = Abbreviation<br>`N` = Last name<br>`VN` = First + Last<br>`V.N` = Initial + Last<br>`TN` = Title + Last<br>`TVN` = Title + First + Last<br>`TV.N` = Title + Initial + Last<br>`O` = Organization |
-| `template` | `1` | Output template | `1` = Standard format |
+| `template` | `1` | Output template | `1` = Standard single-line format<br>`2` = **NEW!** Two-column table layout |
 | `days` | `false` | Number of days to display | Any positive integer |
 
 ### Examples
@@ -99,33 +103,69 @@ Add church services to any post or page using the shortcode:
 [ausgabe_kaplan server="kaplan.example.com" arbeitsgruppe="community" code="ghi789" mode="GT" days="14"]
 ```
 
-## Automatic Updates (Easiest Method)
-
-To enable automatic updates within the WordPress admin, add this plugin to a GitHub repository and use the **GitHub Updater** plugin:
-
-### Step 1: Install GitHub Updater
-
-1. Install the [GitHub Updater](https://github.com/afragen/github-updater) plugin
-2. Activate GitHub Updater
-
-### Step 2: Add Update Headers
-
-Add these headers to the plugin file (`kaplan_gottesdienste.php`) after the existing plugin headers:
-
+**NEW! Two-column layout with Template="2":**
 ```php
-/**
- * GitHub Plugin URI: your-username/kaplan-gottesdienste
- * GitHub Branch: main
- * Requires PHP: 5.6
- * Requires WP: 4.0
- */
+[ausgabe_kaplan server="kaplan.example.com" arbeitsgruppe="gemeinde" code="abc123" template="2"]
 ```
 
-### Step 3: Enable Updates
+**Template="2" with leadership and time formatting:**
+```php
+[ausgabe_kaplan server="kaplan.example.com" arbeitsgruppe="events" code="def456" template="2" leitung="TVN" options="LU"]
+```
 
-1. Push your plugin to a GitHub repository
-2. The plugin will now appear in **Dashboard → Updates** when new versions are available
-3. Updates can be installed with one click from the WordPress admin
+## Output Samples
+
+### Template="1" (existing)
+
+```
+Dienstag, 09. September 2025
+  09.30  Themenschulung Level 2: Fortgeschrittene/ Aufbau/ Erweiterung (JKW Schulungsraum)
+  It mail an Herr Vollmer vom 23.04.2025
+
+Montag, 15. September 2025
+  09.30  Zusammenlegung Zusammenlegung der Datenbanken Meppen (Ost, West, Süd) (Vor Ort im B Osnabrück)
+  09.30  Nachrücker 1. Tag (Anmeldung für beide Tage) fällt aus!!
+```
+
+### Template="2" (NEW: two-column layout)
+
+```
+| Dienstag, 09. September 2025                                    |
+|----------|-------------------------------------------------------|
+| 09.30    | Themenschulung Level 2: Fortgeschrittene/ Aufbau/... |
+|          | It mail an Herr Vollmer vom 23.04.2025                |
+
+| Montag, 15. September 2025                                      |
+|----------|-------------------------------------------------------|
+| 09.30    | Zusammenlegung Zusammenlegung der Datenbanken Meppen |
+| 09.30    | Nachrücker 1. Tag (Anmeldung für beide Tage) fällt aus!! |
+```
+
+## Automatic Updates (Built-in)
+
+**🚀 NEW!** This plugin now includes a **built-in automatic update system** that connects directly to GitHub releases - no additional plugins required!
+
+### How It Works
+
+1. **Automatic Detection**: The plugin checks for new releases on GitHub
+2. **WordPress Integration**: Updates appear in your WordPress admin under **Plugins → Updates**
+3. **One-Click Updates**: Install updates directly from WordPress admin
+4. **Release Management**: Uses GitHub tags and releases for version control
+
+### For Repository Maintainers
+
+**Creating a New Release:**
+
+1. **Update Version**: Increment version in plugin header (e.g., 1.8.0 → 1.8.1)
+2. **Commit Changes**: `git commit -m "Version 1.8.1: Description of changes"`
+3. **Create Tag**: `git tag -a v1.8.1 -m "Release v1.8.1"`
+4. **Push Everything**: `git push origin main && git push origin v1.8.1`
+5. **GitHub Release**: Create a release on GitHub using the tag
+
+**Automatic Update Flow:**
+- Users get notified of updates in their WordPress admin
+- Updates include changelog from GitHub release notes
+- Clean installation preserves settings and configuration
 
 ### Alternative: WordPress.org Repository
 
@@ -146,7 +186,8 @@ For the most seamless updates, consider submitting the plugin to the WordPress.o
 ### Key Methods
 
 - `get_url($atts)` - Constructs KaPlan API URL with parameters
-- `get_html($atts)` - Fetches data and generates HTML output
+- `get_html($atts)` - Fetches data and generates HTML output (supports both templates)
+- `get_template2_css()` - **NEW!** Generates CSS styling for Template="2" table layout
 - `format_leitung()` - Formats leadership names according to specifications
 - `handle_link()` - Processes HTTP links in event descriptions
 
@@ -164,10 +205,20 @@ do_action('kaplan_data_received', $data);
 
 The plugin outputs HTML with these CSS classes for styling:
 
+**Template="1" (Definition List):**
 - `.kaplan-export` - Main container
 - `.kalender` - Definition list container
 - `dt` - Date headers
 - `dd` - Event content
+
+**Template="2" (Table Layout):**
+- `.kaplan-export` - Main container
+- `.kaplan-table-layout` - Table container
+- `.kaplan-date-header` - Date header rows (merged)
+- `.kaplan-time-column` - Time column (left)
+- `.kaplan-content-column` - Content column (right)
+- `.kaplan-event-row` - Individual event rows
+- `.kaplan-additional-info` - Additional event information
 
 ### Development Setup
 
@@ -177,6 +228,40 @@ The plugin outputs HTML with these CSS classes for styling:
 4. Configure KaPlan API access for testing
 
 ## Changelog
+
+### Version 1.8.0 (2025-01-09) 🚀 **NEW TEMPLATE**
+- **🎉 MAJOR**: Added Template="2" with two-column table layout
+- **Enhanced**: Date headers now span full width (merged rows)
+- **Added**: Time column (left) with fixed width and proper alignment  
+- **Added**: Content column (right) with event details identical to Template="1"
+- **Added**: Built-in CSS styling for responsive table layout
+- **Added**: Built-in automatic update system via GitHub releases
+- **Security**: All HTML output properly escaped for WordPress standards
+- **Compatibility**: Fully backward compatible - Template="1" unchanged
+- **Author**: Hans-Joerg Joedike
+
+### Version 1.7.0 (2025-01-08)
+- **Stability**: Reverted complex features causing errors, focused on reliability
+- **Fixed**: Code stability improvements
+- **Enhanced**: Error handling and validation
+- **Author**: Hans-Joerg Joedike
+
+### Version 1.6.4 (2025-01-07)
+- **Code Quality**: Consistent code formatting and indentation
+- **Improved**: Code readability and maintenance
+- **Author**: Hans-Joerg Joedike
+
+### Version 1.6.3 (2025-01-07)
+- **Compatibility**: PHP 8+ compatibility improvements
+- **Security**: Enhanced security practices and input validation
+- **Fixed**: Modern PHP compatibility issues
+- **Author**: Hans-Joerg Joedike
+
+### Version 1.6.2 (2025-01-07)
+- **Security**: Enhanced parameter validation
+- **Improved**: Error handling and user feedback
+- **Fixed**: Input sanitization improvements
+- **Author**: Hans-Joerg Joedike
 
 ### Version 1.6.1 (2024-04-26)
 - **Added**: Community events support (mode=GT)
@@ -229,9 +314,11 @@ The plugin outputs HTML with these CSS classes for styling:
 3. Ensure theme supports the plugin's HTML structure
 
 **Update issues:**
-1. Verify GitHub repository is public (if using GitHub Updater)
-2. Check plugin headers are correctly formatted
-3. Ensure GitHub Updater plugin is active
+1. Check if GitHub repository is accessible
+2. Verify plugin can connect to GitHub API
+3. Look for update notifications in WordPress admin under **Plugins**
+4. Try "Check for Updates" link in plugin actions
+5. Ensure server allows outbound HTTPS connections to api.github.com
 
 ### Getting Help
 
