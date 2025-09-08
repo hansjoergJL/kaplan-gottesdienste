@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * _Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.6.6
+ * Version: 1.6.7
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -17,6 +17,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Requires WP: 4.0
  */
 
+// Version 1.6.7  [Jö] 2025-01-08  Fix smart quotes, positional argument parsing
 // Version 1.6.6  [Jö] 2025-01-08  Enhanced debugging, diagnostic shortcode
 // Version 1.6.5  [Jö] 2025-01-08  Debug support, attribute handling fixes
 // Version 1.6.4  [Jö] 2025-01-07  Code formatting, consistent indentation
@@ -127,7 +128,20 @@ class kaplan_kalender {
         return $str;
     }
     
-    // Links http..... umranden mit <a href=".....">...</a>
+    // Hilfsfunktion: Typografische Anführungszeichen in gerade Anführungszeichen wandeln
+    private static function normalize_quotes($str) {
+        $search = [
+            "\u{201C}", "\u{201D}", "\u{201E}", "\u{00AB}", "\u{00BB}", "\u{2033}", // “ ” „ « » ″
+            "\u{2018}", "\u{2019}", "\u{2032}" // ‘ ’ ′
+        ];
+        $replace = ['"', '"', '"', '"', '"', '"', "'", "'", "'"];
+        // Fallback: direct bytes for some environments
+        $str = str_replace(["“","”","„","«","»","″","‘","’","′"], ['"','"','"','"','"','"',"'","'","'"], $str);
+        // Unicode escape replacement
+        return str_replace($search, $replace, $str);
+    }
+
+    // Links http..... umranden mit <a href=\".....\">...</a>
     private static function handle_link($str) {
         $pos = stripos($str, 'http', 0);
         if (is_numeric($pos)) {
@@ -369,6 +383,30 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
     
     // normalize attribute keys, lowercase (WordPress converts them automatically, but let's be explicit)
     $atts = array_change_key_case((array)$atts, CASE_LOWER);
+
+    // Normalize smart quotes inside all string values
+    foreach ($atts as $k => $v) {
+        if (is_string($v)) {
+            $atts[$k] = kaplan_kalender::normalize_quotes($v);
+        }
+    }
+
+    // If there are positional args (numeric keys) like 0 => 'Server="..."', parse and merge them
+    foreach ($atts as $k => $v) {
+        if (is_int($k) || ctype_digit((string)$k)) {
+            $line = kaplan_kalender::normalize_quotes(trim((string)$v));
+            // Expect pattern key="value" or key='value'
+            if (preg_match('/^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*([\"\'])(.*?)\2$/', $line, $m)) {
+                $key = strtolower($m[1]);
+                $val = $m[3];
+                // Only set if not already provided properly
+                if (!isset($atts[$key]) || $atts[$key] === '') {
+                    $atts[$key] = $val;
+                }
+            }
+            unset($atts[$k]);
+        }
+    }
     
     // override default attributes with user attributes
     $atts = array_merge(
