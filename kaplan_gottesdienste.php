@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * _Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.6.9
+ * Version: 1.7.0
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -17,11 +17,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Requires WP: 4.0
  */
 
-// Version 1.6.9  [Jö] 2025-01-08  Fix regex pattern syntax error
-// Version 1.6.8  [Jö] 2025-01-08  Fix PHP syntax errors, simplify Unicode handling
-// Version 1.6.7  [Jö] 2025-01-08  Fix smart quotes, positional argument parsing
-// Version 1.6.6  [Jö] 2025-01-08  Enhanced debugging, diagnostic shortcode
-// Version 1.6.5  [Jö] 2025-01-08  Debug support, attribute handling fixes
+// Version 1.7.0  [Jö] 2025-01-08  Stable version, revert complex features causing errors
 // Version 1.6.4  [Jö] 2025-01-07  Code formatting, consistent indentation
 // Version 1.6.3  [Jö] 2025-01-07  PHP 8+ compatibility, security improvements
 // Version 1.6.2  [Jö] 2025-01-07  Parameter validation, error handling
@@ -130,23 +126,6 @@ class kaplan_kalender {
         return $str;
     }
     
-    // Hilfsfunktion: Typografische Anführungszeichen in gerade Anführungszeichen wandeln
-    private static function normalize_quotes($str) {
-        // Replace common smart quotes with straight quotes
-        $replacements = array(
-            '“' => '"',  // left double quotation mark
-            '”' => '"',  // right double quotation mark
-            '„' => '"',  // double low-9 quotation mark
-            '‘' => "'", // left single quotation mark
-            '’' => "'", // right single quotation mark
-            '«' => '"',  // left-pointing double angle quotation mark
-            '»' => '"',  // right-pointing double angle quotation mark
-            '″' => '"',  // double prime
-            '′' => "'"  // prime
-        );
-        return str_replace(array_keys($replacements), array_values($replacements), $str);
-    }
-
     // Links http..... umranden mit <a href=".....">...</a>
     private static function handle_link($str) {
         $pos = stripos($str, 'http', 0);
@@ -170,22 +149,9 @@ class kaplan_kalender {
 
     // In dieser Funktion wird die eigentliche Ausgabe in der Variable $html zusammengesetzt.
     public static function get_html($atts) {
-        // Debug: Show received attributes (remove in production)
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('KaPlan Plugin - Received attributes: ' . print_r($atts, true));
-        }
-        
         // Validate required parameters
         if (empty($atts['server'])) {
-            $debug_info = '';
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                $debug_keys = [];
-                foreach ($atts as $key => $value) {
-                    $debug_keys[] = $key . '="' . $value . '"';
-                }
-                $debug_info = ' (Debug: ' . implode(', ', $debug_keys) . ')';
-            }
-            return '<div class="kaplan-export"><p style="color: red;">Fehler: Server-Parameter ist erforderlich' . $debug_info . '</p></div>';
+            return '<div class="kaplan-export"><p style="color: red;">Fehler: Server-Parameter ist erforderlich</p></div>';
         }
         if (empty($atts['arbeitsgruppe'])) {
             return '<div class="kaplan-export"><p style="color: red;">Fehler: Arbeitsgruppe-Parameter ist erforderlich</p></div>';
@@ -202,7 +168,7 @@ class kaplan_kalender {
         // Use WordPress HTTP API for better compatibility
         $response = wp_remote_get($url, [
             'timeout' => 10,
-            'user-agent' => 'KaPlan WordPress Plugin/1.6.4'
+            'user-agent' => 'KaPlan WordPress Plugin/1.7.0'
         ]);
         
         if (is_wp_error($response)) {
@@ -382,38 +348,8 @@ class DateTime_german extends DateTime {
 }
 
 function kaplan_kalender($atts = [], $content = null, $tag = '') {
-    // Debug: Show raw attributes before processing
-    if (defined('WP_DEBUG') && WP_DEBUG) {
-        error_log('KaPlan Plugin - Raw shortcode attributes: ' . print_r($atts, true));
-    }
-    
-    // normalize attribute keys, lowercase (WordPress converts them automatically, but let's be explicit)
+    // normalize attribute keys, lowercase
     $atts = array_change_key_case((array)$atts, CASE_LOWER);
-
-    // Normalize smart quotes inside all string values
-    foreach ($atts as $k => $v) {
-        if (is_string($v)) {
-            $atts[$k] = kaplan_kalender::normalize_quotes($v);
-        }
-    }
-
-    // If there are positional args (numeric keys) like 0 => 'Server="..."', parse and merge them
-    foreach ($atts as $k => $v) {
-        if (is_int($k) || ctype_digit((string)$k)) {
-            $line = kaplan_kalender::normalize_quotes(trim((string)$v));
-            // Expect pattern key="value" or key='value'
-            if (preg_match('/^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(["\'])(.*?)\2$/', $line, $m)) {
-                $key = strtolower($m[1]);
-                $val = $m[3];
-                // Only set if not already provided properly
-                if (!isset($atts[$key]) || $atts[$key] === '') {
-                    $atts[$key] = $val;
-                }
-            }
-            unset($atts[$k]);
-        }
-    }
-    
     // override default attributes with user attributes
     $atts = array_merge(
         [   'mode' => 'B',        // => A=Kirchengruppiert, B=Chronologisch
@@ -426,40 +362,7 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
             'code' => '',         // => Zugriffscode
             'days' => ''          // => Anzahl Tage
         ],  $atts);
-    
-    // Debug: Show final processed attributes
-    if (defined('WP_DEBUG') && WP_DEBUG) {
-        error_log('KaPlan Plugin - Final processed attributes: ' . print_r($atts, true));
-    }
-    
     return kaplan_kalender::get_html($atts);
 }
 
 add_shortcode('ausgabe_kaplan', 'kaplan_kalender');
-
-// Debug shortcode for testing (remove in production)
-function kaplan_debug_shortcode($atts) {
-    if (!defined('WP_DEBUG') || !WP_DEBUG) {
-        return 'Debug mode disabled';
-    }
-    
-    $output = '<div style="background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">';
-    $output .= '<h4>KaPlan Debug Output:</h4>';
-    $output .= '<strong>Raw attributes:</strong><br>';
-    
-    if (empty($atts)) {
-        $output .= 'No attributes received!';
-    } else {
-        foreach ($atts as $key => $value) {
-            $output .= sprintf('%s = "%s" (length: %d)<br>', 
-                esc_html($key), 
-                esc_html($value), 
-                strlen($value)
-            );
-        }
-    }
-    
-    $output .= '</div>';
-    return $output;
-}
-add_shortcode('kaplan_debug', 'kaplan_debug_shortcode');
