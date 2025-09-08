@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.8.1
+ * Version: 1.8.2
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('KAPLAN_PLUGIN_VERSION', '1.8.1');
+define('KAPLAN_PLUGIN_VERSION', '1.8.2');
 define('KAPLAN_PLUGIN_FILE', __FILE__);
 define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -50,6 +50,7 @@ function kaplan_init_updater() {
     }
 }
 
+// Version 1.8.2  [Jö] 2025-01-09  CRITICAL FIX: Template default behavior and VT mode
 // Version 1.8.1  [Jö] 2025-01-09  Enhanced documentation for Template="2" and built-in updates
 // Version 1.8.0  [Jö] 2025-01-09  Added Template="2" for columnar layout with date headers
 // Version 1.7.0  [Jö] 2025-01-08  Stable version, revert complex features causing errors
@@ -236,7 +237,7 @@ class kaplan_kalender {
         // Use WordPress HTTP API for better compatibility
         $response = wp_remote_get($url, [
             'timeout' => 10,
-            'user-agent' => 'KaPlan WordPress Plugin/1.8.1'
+            'user-agent' => 'KaPlan WordPress Plugin/1.8.2'
         ]);
         
         if (is_wp_error($response)) {
@@ -254,7 +255,7 @@ class kaplan_kalender {
         }
         // $data enthält nun alle Termine als Array von Objekten
         
-        $Template = $atts['template'];
+        $Template = $atts['template'] ?? '1';  // Ensure default Template=1
         $html = '';
         
         // Include CSS for Template 2
@@ -277,7 +278,7 @@ class kaplan_kalender {
             foreach ($data as $key=>$termin) {
                 // $termin ist ein Objekt mit den Datenfeldern aus der JSON Abfrage
                 
-                $Template = $atts['template'];
+                $SkipThisEntry = false;  // Flag for VT mode duplicates
                 $Leitung = '' . $atts['leitung'];  // Ausgabeformat Leitung: K / N / VN / V.N / TVN / TV.N (T=Titel V=Vorname N=Nachname K=Kuerzel)
                 if ($atts['mode'] == 'A' || $atts['mode'] == 'B') {
                     $Datum = $termin->TE_Datum;
@@ -332,10 +333,15 @@ class kaplan_kalender {
                     
                     // "AN_ID": 3388
                     if ($Last_ANID == $termin->AN_ID) {  // nur 1 Hauptraum anzeigen
-                        $Template = "-";
+                        $SkipThisEntry = true;  // Skip duplicate entries in VT mode
                     } else {
                         $Last_ANID = $termin->AN_ID;
                     }
+                }
+                
+                // Skip this entry if it's a duplicate in VT mode
+                if ($SkipThisEntry) {
+                    continue;
                 }
                 
                 if ($Template == '1') {   // Standard-Template
