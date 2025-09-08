@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.7.0
+ * Version: 1.8.0
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('KAPLAN_PLUGIN_VERSION', '1.7.0');
+define('KAPLAN_PLUGIN_VERSION', '1.8.0');
 define('KAPLAN_PLUGIN_FILE', __FILE__);
 define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -50,6 +50,7 @@ function kaplan_init_updater() {
     }
 }
 
+// Version 1.8.0  [Jö] 2025-01-09  Added Template="2" for columnar layout with date headers
 // Version 1.7.0  [Jö] 2025-01-08  Stable version, revert complex features causing errors
 // Version 1.6.4  [Jö] 2025-01-07  Code formatting, consistent indentation
 // Version 1.6.3  [Jö] 2025-01-07  PHP 8+ compatibility, security improvements
@@ -180,6 +181,41 @@ class kaplan_kalender {
         return $str;
     }
 
+    // CSS für Template 2 Tabellenlayout
+    private static function get_template2_css() {
+        return '<style>
+        .kaplan-table-layout {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        .kaplan-date-header td {
+            background-color: #f0f0f0;
+            padding: 8px;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+        }
+        .kaplan-time-column {
+            width: 80px;
+            padding: 4px 8px;
+            vertical-align: top;
+            white-space: nowrap;
+            padding-left: 20px;
+        }
+        .kaplan-content-column {
+            padding: 4px 8px;
+            vertical-align: top;
+        }
+        .kaplan-event-row td {
+            border-bottom: 1px solid #eee;
+        }
+        .kaplan-additional-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+        </style>';
+    }
+
     // In dieser Funktion wird die eigentliche Ausgabe in der Variable $html zusammengesetzt.
     public static function get_html($atts) {
         // Validate required parameters
@@ -195,13 +231,11 @@ class kaplan_kalender {
         
         $url = self::get_url($atts);
         $options = $atts['options'] ?? '';
-
-        $html = '';
         
         // Use WordPress HTTP API for better compatibility
         $response = wp_remote_get($url, [
             'timeout' => 10,
-            'user-agent' => 'KaPlan WordPress Plugin/1.7.0'
+            'user-agent' => 'KaPlan WordPress Plugin/1.8.0'
         ]);
         
         if (is_wp_error($response)) {
@@ -219,8 +253,20 @@ class kaplan_kalender {
         }
         // $data enthält nun alle Termine als Array von Objekten
         
+        $Template = $atts['template'];
+        $html = '';
+        
+        // Include CSS for Template 2
+        if ($Template == '2') {
+            $html .= self::get_template2_css();
+        }
+        
         $html .= '<div class="kaplan-export">';
-        $html .= '<dl class="kalender">';
+        if ($Template == '2') {
+            $html .= '<table class="kaplan-table-layout">';
+        } else {
+            $html .= '<dl class="kalender">';
+        }
 
         if (is_null($data)) {
             $html .= 'Es liegen derzeit keine Termine vor.';
@@ -355,11 +401,82 @@ class kaplan_kalender {
                     if (!self::str_ends_with($html, '</p>')) {
                         $html .= '<br />';
                     }
+                } elseif ($Template == '2') {   // Two-column table template
+                    if ($Datum != $last_date) {
+                        // Neues Datum als merged header row
+                        $Date_components = explode('/', $Datum);
+                        $Date = new DateTime_german();
+                        $Date->setDate($Date_components[2], $Date_components[0], $Date_components[1]);
+                        $html .= '<tr class="kaplan-date-header"><td colspan="2"><strong>' . esc_html($Date->format('l, d. F Y'));
+                        if (strpos($options, 'E') !== false) {
+                            if ($Tagesbez != '') {
+                                $html .= '&nbsp;-&nbsp;' . esc_html($Tagesbez);
+                            }
+                        }
+                        $html .= '</strong></td></tr>';
+                        $last_date = $Datum;
+                    }
+
+                    // Event row with time column and content column
+                    $html .= '<tr class="kaplan-event-row">';
+                    
+                    // Time column
+                    $s = $Uhrzeit;
+                    if (strpos($options, 'U') !== false) {
+                        $s .= '&nbsp;Uhr';
+                    }
+                    $html .= '<td class="kaplan-time-column">' . self::red($s, $FaelltAus) . '</td>';
+                    
+                    // Content column
+                    $html .= '<td class="kaplan-content-column">';
+                    
+                    // Gottesdienst / Veranstaltung und Zusatz
+                    $html .= '<strong>' . self::html($Anlass) . '</strong>';
+                    if ($Zusatz != '') {
+                        $s = self::handle_link($Zusatz);
+                        if ($s != '') {
+                            $html .= ' ' . $s;
+                        }
+                    }
+
+                    // Kirche / Raum / Leitung
+                    $s = '';
+                    if (strpos($options, 'V-') == false) {
+                        $s = $Raum;
+                    }
+                    if ($Ltg != '') {
+                        $s .= ', ' . $Ltg;
+                    }
+                    if ($s != '') {
+                        $html .= ' (<em>' . self::html(trim($s, ', ')) . '</em>)';
+                    }
+
+                    if (!$FaelltAus) {
+                        if ($Zusatz2 != '') {
+                            $html .= '<br><span class="kaplan-additional-info">' . self::handle_link($Zusatz2) . '</span>';
+                        }
+                        // Anmelde-Link
+                        if ($RegLink != '') {
+                            $html .= ' <a href="' . esc_url($RegLink) . '" target="_blank" rel="noopener noreferrer">Anmeldung</a>';
+                        }
+                    } else {  // Fällt aus!!
+                        $html .= self::red(' f&auml;llt aus!!', true); 
+                    }
+                    
+                    $html .= '</td></tr>';
                 }
             }
-            $html .= '<br>&nbsp;</dd>';
+            if ($Template == '2') {
+                // No additional closing needed for table rows
+            } else {
+                $html .= '<br>&nbsp;</dd>';
+            }
         }
-        $html .= '</dl>';
+        if ($Template == '2') {
+            $html .= '</table>';
+        } else {
+            $html .= '</dl>';
+        }
         $html .= '</div>';
 
         return $html;
