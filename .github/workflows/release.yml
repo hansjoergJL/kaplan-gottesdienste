@@ -1,0 +1,71 @@
+name: Create Plugin Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Create plugin ZIP
+      run: |
+        # Create a clean directory with plugin files
+        mkdir kaplan-gottesdienste
+        
+        # Copy plugin files (exclude development files)
+        cp kaplan_gottesdienste.php kaplan-gottesdienste/
+        cp README.md kaplan-gottesdienste/
+        cp -r includes kaplan-gottesdienste/
+        
+        # Create ZIP file
+        zip -r kaplan-gottesdienste-v${{ steps.get_version.outputs.VERSION }}.zip kaplan-gottesdienste/
+        
+        # Also create a generic ZIP for compatibility
+        cp kaplan-gottesdienste-v${{ steps.get_version.outputs.VERSION }}.zip kaplan-gottesdienste.zip
+    
+    - name: Verify ZIP contents
+      run: |
+        echo "Contents of ZIP file:"
+        unzip -l kaplan-gottesdienste.zip
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          kaplan-gottesdienste-v${{ steps.get_version.outputs.VERSION }}.zip
+          kaplan-gottesdienste.zip
+        generate_release_notes: true
+        name: "KaPlan Gottesdienste v${{ steps.get_version.outputs.VERSION }}"
+        body: |
+          ## KaPlan Gottesdienste Plugin v${{ steps.get_version.outputs.VERSION }}
+          
+          ### Installation
+          - Download `kaplan-gottesdienste.zip`
+          - Upload via WordPress Admin: Plugins → Add New → Upload Plugin
+          - Or extract to `/wp-content/plugins/` directory
+          
+          ### Update Process
+          Users with the plugin already installed will receive automatic update notifications in their WordPress admin.
+          
+          ### Changelog
+          See the automatically generated release notes below.
+          
+          ---
+          
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create deployment artifact
+      run: |
+        echo "Plugin v${{ steps.get_version.outputs.VERSION }} successfully released!"
+        echo "Download URL: https://github.com/hansjoergJL/kaplan-gottesdienste/releases/download/${{ github.ref_name }}/kaplan-gottesdienste.zip"

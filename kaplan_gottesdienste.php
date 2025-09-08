@@ -3,7 +3,7 @@ defined('ABSPATH') or die("Please use as described.");
 
 /**
  * Plugin Name:  KaPlan Gottesdienste
- * _Plugin URI: https://www.kaplan-software.de
+ * Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
  * Version: 1.7.0
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
@@ -16,6 +16,39 @@ defined('ABSPATH') or die("Please use as described.");
  * Requires PHP: 7.4
  * Requires WP: 4.0
  */
+
+// Prevent direct access
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+// Define plugin constants
+define('KAPLAN_PLUGIN_VERSION', '1.7.0');
+define('KAPLAN_PLUGIN_FILE', __FILE__);
+define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('KAPLAN_GITHUB_REPO', 'hansjoergJL/kaplan-gottesdienste');
+
+// Load the GitHub updater
+require_once KAPLAN_PLUGIN_DIR . 'includes/class-kaplan-updater.php';
+
+// Initialize the updater when plugins are loaded
+add_action('plugins_loaded', 'kaplan_init_updater', 11);
+
+/**
+ * Initialize the GitHub updater
+ */
+function kaplan_init_updater() {
+    if (class_exists('KaPlan_GitHub_Updater')) {
+        new KaPlan_GitHub_Updater(
+            KAPLAN_PLUGIN_FILE,
+            KAPLAN_PLUGIN_VERSION,
+            KAPLAN_GITHUB_REPO
+            // Add GitHub token as 4th parameter if you have a private repo:
+            // , 'your_github_token_here'
+        );
+    }
+}
 
 // Version 1.7.0  [Jö] 2025-01-08  Stable version, revert complex features causing errors
 // Version 1.6.4  [Jö] 2025-01-07  Code formatting, consistent indentation

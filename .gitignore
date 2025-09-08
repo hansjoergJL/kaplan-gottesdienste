@@ -37,3 +37,12 @@ Icon?
 # Backup files
 *.bak
 *.backup
+
+# Plugin distribution files
+*.zip
+
+# Word temporary files
+~$*
+
+# Word documents (optional - uncomment if you don't want to track .docx files)
+# *.docx
