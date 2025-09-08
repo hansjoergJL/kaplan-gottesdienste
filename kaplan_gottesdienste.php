@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * Plugin URI: https://www.kaplan-software.de
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.8.0
+ * Version: 1.8.1
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: https://www.kaplan-software.de
  * License: GPL2 or newer
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('KAPLAN_PLUGIN_VERSION', '1.8.0');
+define('KAPLAN_PLUGIN_VERSION', '1.8.1');
 define('KAPLAN_PLUGIN_FILE', __FILE__);
 define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -50,6 +50,7 @@ function kaplan_init_updater() {
     }
 }
 
+// Version 1.8.1  [Jö] 2025-01-09  Enhanced documentation for Template="2" and built-in updates
 // Version 1.8.0  [Jö] 2025-01-09  Added Template="2" for columnar layout with date headers
 // Version 1.7.0  [Jö] 2025-01-08  Stable version, revert complex features causing errors
 // Version 1.6.4  [Jö] 2025-01-07  Code formatting, consistent indentation
@@ -235,7 +236,7 @@ class kaplan_kalender {
         // Use WordPress HTTP API for better compatibility
         $response = wp_remote_get($url, [
             'timeout' => 10,
-            'user-agent' => 'KaPlan WordPress Plugin/1.8.0'
+            'user-agent' => 'KaPlan WordPress Plugin/1.8.1'
         ]);
         
         if (is_wp_error($response)) {
