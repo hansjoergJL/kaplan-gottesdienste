@@ -220,6 +220,15 @@ class kaplan_kalender {
 
     // In dieser Funktion wird die eigentliche Ausgabe in der Variable $html zusammengesetzt.
     public static function get_html($atts) {
+        // Debug mode - check if debug parameter is set
+        $debug = isset($atts['debug']) && $atts['debug'] == '1';
+        $debug_info = '';
+        
+        if ($debug) {
+            $debug_info .= '<!-- KaPlan Debug Start -->\n';
+            $debug_info .= '<!-- Parameters: ' . json_encode($atts) . ' -->\n';
+        }
+        
         // Validate required parameters
         if (empty($atts['server'])) {
             return '<div class="kaplan-export"><p style="color: red;">Fehler: Server-Parameter ist erforderlich</p></div>';
@@ -234,6 +243,10 @@ class kaplan_kalender {
         $url = self::get_url($atts);
         $options = $atts['options'] ?? '';
         
+        if ($debug) {
+            $debug_info .= '<!-- URL: ' . esc_html($url) . ' -->\n';
+        }
+        
         // Use WordPress HTTP API for better compatibility
         $response = wp_remote_get($url, [
             'timeout' => 10,
@@ -241,22 +254,42 @@ class kaplan_kalender {
         ]);
         
         if (is_wp_error($response)) {
-            return '<div class="kaplan-export"><p style="color: red;">Fehler: Verbindung zum KaPlan-Server fehlgeschlagen. ' . esc_html($response->get_error_message()) . '</p></div>';
+            $error_msg = '<div class="kaplan-export"><p style="color: red;">Fehler: Verbindung zum KaPlan-Server fehlgeschlagen. ' . esc_html($response->get_error_message()) . '</p></div>';
+            if ($debug) {
+                $error_msg .= '<!-- Debug Error: ' . esc_html($response->get_error_message()) . ' -->\n';
+            }
+            return $debug_info . $error_msg;
         }
         
         $json = wp_remote_retrieve_body($response);
         if (empty($json)) {
-            return '<div class="kaplan-export"><p style="color: red;">Fehler: Keine Antwort vom KaPlan-Server erhalten.</p></div>';
+            $error_msg = '<div class="kaplan-export"><p style="color: red;">Fehler: Keine Antwort vom KaPlan-Server erhalten.</p></div>';
+            if ($debug) {
+                $error_msg .= '<!-- Debug: Empty response body -->\n';
+            }
+            return $debug_info . $error_msg;
+        }
+        
+        if ($debug) {
+            $debug_info .= '<!-- Response length: ' . strlen($json) . ' -->\n';
         }
         
         $data = json_decode($json);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return '<div class="kaplan-export"><p style="color: red;">Fehler: Ungültige Antwort vom KaPlan-Server.</p></div>';
+            $error_msg = '<div class="kaplan-export"><p style="color: red;">Fehler: Ungültige Antwort vom KaPlan-Server.</p></div>';
+            if ($debug) {
+                $error_msg .= '<!-- Debug JSON Error: ' . json_last_error_msg() . ' -->\n';
+            }
+            return $debug_info . $error_msg;
         }
         // $data enthält nun alle Termine als Array von Objekten
         
+        if ($debug) {
+            $debug_info .= '<!-- Records found: ' . (is_array($data) ? count($data) : 'Not an array') . ' -->\n';
+        }
+        
         $Template = $atts['template'] ?? '1';  // Ensure default Template=1
-        $html = '';
+        $html = $debug_info;
         
         // Include CSS for Template 2
         if ($Template == '2') {
@@ -485,6 +518,10 @@ class kaplan_kalender {
             $html .= '</dl>';
         }
         $html .= '</div>';
+        
+        if ($debug) {
+            $html .= '<!-- KaPlan Debug End -->\n';
+        }
 
         return $html;
     }
