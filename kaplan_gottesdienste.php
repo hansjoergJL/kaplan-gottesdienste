@@ -218,6 +218,12 @@ class kaplan_kalender {
             font-size: 0.9em;
             color: #666;
         }
+        .kaplan-leitung {
+            display: block;
+            margin-top: 2px;
+            font-size: 0.9em;
+            color: #666;
+        }
         </style>';
     }
 
@@ -266,6 +272,12 @@ class kaplan_kalender {
             font-size: 0.9em;
             color: #666;
         }
+        .kaplan-leitung {
+            display: block;
+            margin-top: 2px;
+            font-size: 0.9em;
+            color: #666;
+        }
         </style>';
     }
 
@@ -277,7 +289,7 @@ class kaplan_kalender {
         
         if ($debug) {
             $debug_info .= '<!-- KaPlan Debug Start -->\n';
-            $debug_info .= '<!-- Plugin Version: --help
+            $debug_info .= '<!-- Plugin Version: --help -->\n';
             $debug_info .= '<!-- Parameters: ' . json_encode($atts) . ' -->\n';
         }
         
@@ -536,13 +548,10 @@ class kaplan_kalender {
                         }
                     }
 
-                    // Kirche / Raum / Leitung
+                    // Kirche / Raum (without Leitung)
                     $s = '';
                     if (strpos($options, 'V-') == false) {
                         $s = $Raum;
-                    }
-                    if ($Ltg != '') {
-                        $s .= ', ' . $Ltg;
                     }
                     if ($s != '') {
                         $html .= ' (<em>' . self::html(trim($s, ', ')) . '</em>)';
@@ -558,6 +567,11 @@ class kaplan_kalender {
                         }
                     } else {  // Fällt aus!!
                         $html .= self::red(' f&auml;llt aus!!', true); 
+                    }
+                    
+                    // Leitung as last element on its own line
+                    if ($Ltg != '') {
+                        $html .= '<br><div class="kaplan-leitung">(' . self::html($Ltg) . ')</div>';
                     }
                     
                     $html .= '</td></tr>';
@@ -601,14 +615,7 @@ class kaplan_kalender {
                         }
                     }
 
-                    // Leitung info (third line in parentheses)
-                    $s = '';
-                    if ($Ltg != '') {
-                        $s = $Ltg;
-                    }
-                    if ($s != '') {
-                        $html .= '<div class="kaplan-service-line kaplan-leitung-info">(' . self::html($s) . ')</div>';
-                    }
+                    // Leitung info removed from here - will be added at the end
 
                     if (!$FaelltAus) {
                         if ($Zusatz2 != '') {
@@ -620,6 +627,11 @@ class kaplan_kalender {
                         }
                     } else {  // Fällt aus!!
                         $html .= '<div class="kaplan-service-line">' . self::red(' f&auml;llt aus!!', true) . '</div>';
+                    }
+                    
+                    // Leitung as last element on its own line
+                    if ($Ltg != '') {
+                        $html .= '<div class="kaplan-service-line kaplan-leitung">(' . self::html($Ltg) . ')</div>';
                     }
 
                     $html .= '</td>';
