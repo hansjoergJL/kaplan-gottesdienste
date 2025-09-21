@@ -3,18 +3,18 @@ defined('ABSPATH') or die("Please use as described.");
 
 /**
  * Plugin Name:  KaPlan Gottesdienste
- * Plugin URI: https://www.kaplan-software.de
+ * Plugin URI: https://www.jlsoftware.de/software/kaplan-plugin/
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.8.2
+ * Version: 1.8.4
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
- * Author URI: https://www.kaplan-software.de
+ * Author URI: https://www.jlsoftware.de/
  * License: GPL2 or newer
  * License URI:  https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:  kaplan-import
  * GitHub Plugin URI: hansjoergJL/kaplan-gottesdienste
  * GitHub Branch: main
- * Requires PHP: 7.4
- * Requires WP: 4.0
+ * Requires PHP: 5.5
+ * Requires WP: 2.7
  */
 
 // Prevent direct access
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('KAPLAN_PLUGIN_VERSION', '1.8.2');
+define('KAPLAN_PLUGIN_VERSION', '1.8.4');
 define('KAPLAN_PLUGIN_FILE', __FILE__);
 define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -50,6 +50,8 @@ function kaplan_init_updater() {
     }
 }
 
+// Version 1.8.4  [Jö] 2025-01-21  Updated version requirements: PHP 5.5, WordPress 2.7
+// Version 1.8.3  [Jö] 2025-01-09  Added Template="3" with 3 columns
 // Version 1.8.2  [Jö] 2025-01-09  CRITICAL FIX: Template default behavior and VT mode
 // Version 1.8.1  [Jö] 2025-01-09  Enhanced documentation for Template="2" and built-in updates
 // Version 1.8.0  [Jö] 2025-01-09  Added Template="2" for columnar layout with date headers
@@ -79,7 +81,7 @@ class kaplan_kalender {
         $req .= 'get.asp?Arbeitsgruppe=' . $atts['arbeitsgruppe']
             . '&Code=' . $atts['code']
             . '&mode=' . $atts['mode']
-            . '&options=L' . $atts['options']
+            . '&options=' . ($atts['options'] ? 'L' . $atts['options'] : 'L')
             . '&type=json&req=plugin'
             . ($atts['days'] ? ('&days=' . $atts['days']) : '');
         return $req;
@@ -218,6 +220,54 @@ class kaplan_kalender {
         </style>';
     }
 
+    // CSS für Template 3 Tabellenlayout (3 columns)
+    private static function get_template3_css() {
+        return '<style>
+        .kaplan-table-layout {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        .kaplan-date-header td {
+            background-color: #f0f0f0;
+            padding: 8px;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+        }
+        .kaplan-time-column {
+            width: 80px;
+            padding: 4px 8px;
+            vertical-align: top;
+            white-space: nowrap;
+            padding-left: 20px;
+        }
+        .kaplan-service-info-column {
+            padding: 4px 8px;
+            vertical-align: top;
+            width: 60%;
+        }
+        .kaplan-raum-column {
+            padding: 4px 8px;
+            vertical-align: top;
+            width: 25%;
+        }
+        .kaplan-event-row td {
+            border-bottom: 1px solid #eee;
+        }
+        .kaplan-additional-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .kaplan-service-line {
+            margin: 2px 0;
+        }
+        .kaplan-leitung-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+        </style>';
+    }
+
     // In dieser Funktion wird die eigentliche Ausgabe in der Variable $html zusammengesetzt.
     public static function get_html($atts) {
         // Debug mode - check if debug parameter is set
@@ -250,7 +300,7 @@ class kaplan_kalender {
         // Use WordPress HTTP API for better compatibility
         $response = wp_remote_get($url, [
             'timeout' => 10,
-            'user-agent' => 'KaPlan WordPress Plugin/1.8.2'
+            'user-agent' => 'KaPlan WordPress Plugin/1.8.4'
         ]);
         
         if (is_wp_error($response)) {
@@ -291,13 +341,15 @@ class kaplan_kalender {
         $Template = $atts['template'] ?? '1';  // Ensure default Template=1
         $html = $debug_info;
         
-        // Include CSS for Template 2
+        // Include CSS for Template 2 and 3
         if ($Template == '2') {
             $html .= self::get_template2_css();
+        } elseif ($Template == '3') {
+            $html .= self::get_template3_css();
         }
         
         $html .= '<div class="kaplan-export">';
-        if ($Template == '2') {
+        if ($Template == '2' || $Template == '3') {
             $html .= '<table class="kaplan-table-layout">';
         } else {
             $html .= '<dl class="kalender">';
@@ -504,15 +556,84 @@ class kaplan_kalender {
                     }
                     
                     $html .= '</td></tr>';
+                } elseif ($Template == '3') {   // Three-column table template
+                    if ($Datum != $last_date) {
+                        // Neues Datum als merged header row spanning 3 columns
+                        $Date_components = explode('/', $Datum);
+                        $Date = new DateTime_german();
+                        $Date->setDate($Date_components[2], $Date_components[0], $Date_components[1]);
+                        $html .= '<tr class="kaplan-date-header"><td colspan="3"><strong>' . esc_html($Date->format('l, d. F Y'));
+                        if (strpos($options, 'E') !== false) {
+                            if ($Tagesbez != '') {
+                                $html .= '&nbsp;-&nbsp;' . esc_html($Tagesbez);
+                            }
+                        }
+                        $html .= '</strong></td></tr>';
+                        $last_date = $Datum;
+                    }
+
+                    // Event row with three columns: time, service info, raum
+                    $html .= '<tr class="kaplan-event-row">';
+
+                    // Time column
+                    $s = $Uhrzeit;
+                    if (strpos($options, 'U') !== false) {
+                        $s .= '&nbsp;Uhr';
+                    }
+                    $html .= '<td class="kaplan-time-column">' . self::red($s, $FaelltAus) . '</td>';
+
+                    // Service info column (Anlass, Zusatz, Leitung)
+                    $html .= '<td class="kaplan-service-info-column">';
+
+                    // Anlass (first line)
+                    $html .= '<div class="kaplan-service-line"><strong>' . self::html($Anlass) . '</strong></div>';
+
+                    // Zusatz (second line)
+                    if ($Zusatz != '') {
+                        $s = self::handle_link($Zusatz);
+                        if ($s != '') {
+                            $html .= '<div class="kaplan-service-line">' . $s . '</div>';
+                        }
+                    }
+
+                    // Leitung info (third line in parentheses)
+                    $s = '';
+                    if ($Ltg != '') {
+                        $s = $Ltg;
+                    }
+                    if ($s != '') {
+                        $html .= '<div class="kaplan-service-line kaplan-leitung-info">(' . self::html($s) . ')</div>';
+                    }
+
+                    if (!$FaelltAus) {
+                        if ($Zusatz2 != '') {
+                            $html .= '<div class="kaplan-service-line"><span class="kaplan-additional-info">' . self::handle_link($Zusatz2) . '</span></div>';
+                        }
+                        // Anmelde-Link
+                        if ($RegLink != '') {
+                            $html .= '<div class="kaplan-service-line"> <a href="' . esc_url($RegLink) . '" target="_blank" rel="noopener noreferrer">Anmeldung</a></div>';
+                        }
+                    } else {  // Fällt aus!!
+                        $html .= '<div class="kaplan-service-line">' . self::red(' f&auml;llt aus!!', true) . '</div>';
+                    }
+
+                    $html .= '</td>';
+
+                    // Raum column
+                    $html .= '<td class="kaplan-raum-column">';
+                    if (strpos($options, 'V-') == false) {
+                        $html .= self::html($Raum);
+                    }
+                    $html .= '</td></tr>';
                 }
             }
-            if ($Template == '2') {
+            if ($Template == '2' || $Template == '3') {
                 // No additional closing needed for table rows
             } else {
                 $html .= '<br>&nbsp;</dd>';
             }
         }
-        if ($Template == '2') {
+        if ($Template == '2' || $Template == '3') {
             $html .= '</table>';
         } else {
             $html .= '</dl>';
@@ -529,6 +650,7 @@ class kaplan_kalender {
 
 class DateTime_german extends DateTime {
 
+    #[\ReturnTypeWillChange]
     public function format($format) {
         return 
             str_replace(
