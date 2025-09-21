@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * Plugin URI: http://www.jlsoftware.de/software/kaplan-plugin/
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.8.5
+ * Version: --help
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: http://www.jlsoftware.de/
  * License: GPL2 or newer
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('KAPLAN_PLUGIN_VERSION', '1.8.5');
+define('KAPLAN_PLUGIN_VERSION', '--help');
 define('KAPLAN_PLUGIN_FILE', __FILE__);
 define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -277,7 +277,7 @@ class kaplan_kalender {
         
         if ($debug) {
             $debug_info .= '<!-- KaPlan Debug Start -->\n';
-            $debug_info .= '<!-- Plugin Version: 1.8.5
+            $debug_info .= '<!-- Plugin Version: --help
             $debug_info .= '<!-- Parameters: ' . json_encode($atts) . ' -->\n';
         }
         
