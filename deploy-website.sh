@@ -13,8 +13,8 @@ set -e # Exit immediately if a command exits with a non-zero status.
 
 # --- Configuration ---
 LOCAL_FILE="plugin-website/index.html"
-REMOTE_PATH="public_html/software/kaplan-plugin/"
-REMOTE_FILE="index.html"
+REMOTE_PATH="software/kaplan-plugin/"
+REMOTE_FILE="index.htm"
 
 # --- Colors for output ---
 RED='\033[0;31m'
@@ -89,15 +89,26 @@ try_lftp() {
     return 1
 }
 
-# Function to try curl FTP upload
+# Function to try curl FTP upload with multiple paths and extensions
 try_curl_ftp() {
     print_info "Attempting cURL FTP deployment to $SERVER_JL_DOMAIN..."
     
     if command -v curl >/dev/null 2>&1; then
-        # First try to create directory structure
-        if curl -T "$LOCAL_FILE" "ftp://$SERVER_JL_USER:$SERVER_JL_PASSWORD@$SERVER_JL_DOMAIN/$REMOTE_PATH$REMOTE_FILE" --create-dirs -s 2>/dev/null; then
-            return 0
-        fi
+        # Try different path and file combinations
+        local paths=("software/kaplan-plugin/" "software/" "kaplan-plugin/" "")
+        local files=("index.htm" "index.html")
+        
+        for path in "${paths[@]}"; do
+            for file in "${files[@]}"; do
+                print_info "Trying path: $path with file: $file"
+                if curl -T "$LOCAL_FILE" "ftp://$SERVER_JL_USER:$SERVER_JL_PASSWORD@$SERVER_JL_DOMAIN/$path$file" --create-dirs -s 2>/dev/null; then
+                    print_success "Success! Uploaded to: $path$file"
+                    SUCCESSFUL_PATH="$path"
+                    SUCCESSFUL_FILE="$file"
+                    return 0
+                fi
+            done
+        done
     fi
     
     return 1
@@ -135,10 +146,18 @@ show_result() {
         print_success "Website deployment successful!"
         echo
         print_info "🌐 Website URLs:"
-        print_info "   • https://$SERVER_JL_DOMAIN/software/kaplan-plugin/"
-        print_info "   • https://www.$SERVER_JL_DOMAIN/software/kaplan-plugin/"
+        if [ -n "$SUCCESSFUL_PATH" ] && [ -n "$SUCCESSFUL_FILE" ]; then
+            # Extract web path from FTP path
+            WEB_PATH=$(echo "$SUCCESSFUL_PATH" | sed 's|^[^/]*/||' | sed 's|/$||')
+            print_info "   • http://$SERVER_JL_DOMAIN/$WEB_PATH/"
+            print_info "   • http://www.$SERVER_JL_DOMAIN/$WEB_PATH/"
+            print_info "   • Direct file: http://$SERVER_JL_DOMAIN/$WEB_PATH/$SUCCESSFUL_FILE"
+        else
+            print_info "   • http://$SERVER_JL_DOMAIN/software/kaplan-plugin/"
+            print_info "   • http://www.$SERVER_JL_DOMAIN/software/kaplan-plugin/"
+        fi
         echo
-        print_info "📄 Updated file: $REMOTE_FILE"
+        print_info "📄 Updated file: ${SUCCESSFUL_FILE:-$REMOTE_FILE}"
         print_info "📅 Deployment time: $(date)"
         echo
     else
@@ -183,6 +202,8 @@ print_success "Credentials found for $SERVER_JL_USER@$SERVER_JL_DOMAIN"
 echo
 print_info "Starting deployment process..."
 DEPLOYED=1
+SUCCESSFUL_PATH=""
+SUCCESSFUL_FILE=""
 
 # Method 1: Try cURL FTP (most reliable)
 if try_curl_ftp; then
