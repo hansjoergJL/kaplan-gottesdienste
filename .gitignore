@@ -46,3 +46,15 @@ Icon?
 
 # Word documents (optional - uncomment if you don't want to track .docx files)
 # *.docx
+
+# Development and testing scripts
+test.sh
+test-*.sh
+*.test
+local-test*
+debug.log
+
+# Local development environment files
+.env.local
+.env.development
+local-config.php
