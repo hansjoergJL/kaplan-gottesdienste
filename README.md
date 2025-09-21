@@ -111,7 +111,7 @@ Fügen Sie den Shortcode in der Ausgabeseite für Gottesdienste (oder Gemeindete
 | \`days\` | **Zeitraum** | \`"14"\` für 14 Tage, \`"30"\` für 30 Tage |
 | \`mode\` | **Anzeigemodus** | \`"B"\` Chronologisch, \`"VT"\` Veranstaltungen |
 | \`leitung\` | **Zelebrant anzeigen** | \`"TVN"\` Titel + Name |
-| \`options\` | **Zusatzoptionen** | \`"U"\` zeigt "Uhr" an |
+| \`options\` | **Zusatzoptionen** | \`"U"\` ergänzt "Uhr" |
 
 ### **Beispiele für verschiedene Anwendungen**
 
@@ -157,7 +157,7 @@ Fügen Sie den Shortcode in der Ausgabeseite für Gottesdienste (oder Gemeindete
 ## 🆕 **Was ist neu?**
 
 ### **Version 1.8.5 (Aktuell)**
-🔧 **Kritischer Fix:** Smart Quotes Normalisierung  
+🔧 Smart Quotes Normalisierung  
 ✅ Plugin funktioniert jetzt auch mit kopierten Shortcodes  
 ✅ Bessere Fehlerbehandlung bei Attributen  
 ✅ Verbesserte URL-Parameter-Validierung  
