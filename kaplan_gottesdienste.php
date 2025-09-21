@@ -3,11 +3,11 @@ defined('ABSPATH') or die("Please use as described.");
 
 /**
  * Plugin Name:  KaPlan Gottesdienste
- * Plugin URI: https://www.jlsoftware.de/software/kaplan-plugin/
+ * Plugin URI: http://www.jlsoftware.de/software/kaplan-plugin/
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.8.4
+ * Version: 1.8.5
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
- * Author URI: https://www.jlsoftware.de/
+ * Author URI: http://www.jlsoftware.de/
  * License: GPL2 or newer
  * License URI:  https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:  kaplan-import
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('KAPLAN_PLUGIN_VERSION', '1.8.4');
+define('KAPLAN_PLUGIN_VERSION', '1.8.5');
 define('KAPLAN_PLUGIN_FILE', __FILE__);
 define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -50,6 +50,7 @@ function kaplan_init_updater() {
     }
 }
 
+// Version 1.8.5  [Jö] 2025-09-21  CRITICAL FIX: Smart quotes normalization in shortcode attributes
 // Version 1.8.4  [Jö] 2025-01-21  Updated version requirements: PHP 5.5, WordPress 2.7
 // Version 1.8.3  [Jö] 2025-01-09  Added Template="3" with 3 columns
 // Version 1.8.2  [Jö] 2025-01-09  CRITICAL FIX: Template default behavior and VT mode
@@ -276,6 +277,7 @@ class kaplan_kalender {
         
         if ($debug) {
             $debug_info .= '<!-- KaPlan Debug Start -->\n';
+            $debug_info .= '<!-- Plugin Version: 1.8.5
             $debug_info .= '<!-- Parameters: ' . json_encode($atts) . ' -->\n';
         }
         
@@ -312,6 +314,9 @@ class kaplan_kalender {
         }
         
         $json = wp_remote_retrieve_body($response);
+        if ($debug) {
+            file_put_contents(plugin_dir_path(__FILE__) . 'debug.log', $json);
+        }
         if (empty($json)) {
             $error_msg = '<div class="kaplan-export"><p style="color: red;">Fehler: Keine Antwort vom KaPlan-Server erhalten.</p></div>';
             if ($debug) {
@@ -405,7 +410,7 @@ class kaplan_kalender {
                     if ($Leitung != '') {
                         $PE_Kuerzel = '';
                         $PE_Titel = (isset($termin->Titel) ? $termin->Titel : '');
-                        $PE_Vorname = (isset($termin->Vorname) ? $termin->Vorname : '');
+                        $PE_Vorname = (isset($termin->PE_Vorname) ? $termin->PE_Vorname : '');
                         $PE_Nachname = (isset($termin->Nachname) ? $termin->Nachname : '');
                         $PE_Ordensname = (isset($termin->Ordensname) ? $termin->Ordensname : '');
                         $PE_Organisation = (isset($termin->Organisation) ? $termin->Organisation : '');
@@ -650,7 +655,7 @@ class kaplan_kalender {
 
 class DateTime_german extends DateTime {
 
-    #[\ReturnTypeWillChange]
+    #[ReturnTypeWillChange]
     public function format($format) {
         return 
             str_replace(
@@ -668,7 +673,8 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
     $atts = array_change_key_case((array)$atts, CASE_LOWER);
     // override default attributes with user attributes
     $atts = array_merge(
-        [   'mode' => 'B',        // => A=Kirchengruppiert, B=Chronologisch
+        [
+            'mode' => 'B',        // => A=Kirchengruppiert, B=Chronologisch
             'options' => '',      // => keine Optionen
             'secure' => '1',      // => https
             'leitung' => '',      // => ohne Ausgabe Leitung
@@ -678,6 +684,27 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
             'code' => '',         // => Zugriffscode
             'days' => ''          // => Anzahl Tage
         ],  $atts);
+
+    // Normalize smart quotes and sanitize numeric attributes to avoid malformed URLs
+    foreach ($atts as $k => $v) {
+        if (is_string($v)) {
+            $v = str_replace(
+                ['“','”','„','‘','’','‹','›'],
+                ['"','"','"','\'','\'','\'','\''],
+                $v
+            );
+            // Trim surrounding quotes/spaces
+            $v = trim($v, " \t\n\r\0\x0B\"'" );
+            $atts[$k] = $v;
+        }
+    }
+    // Ensure numeric-only fields are numbers
+    foreach (['days','template'] as $nk) {
+        if (isset($atts[$nk]) && is_string($atts[$nk])) {
+            $atts[$nk] = preg_replace('/\D+/', '', $atts[$nk]);
+        }
+    }
+
     return kaplan_kalender::get_html($atts);
 }
 
