@@ -115,7 +115,7 @@ Add church services to any post or page using the shortcode:
 
 ## Output Samples
 
-### Template="1" (existing)
+### Template="1" (default)
 
 ```
 Dienstag, 09. September 2025
@@ -123,27 +123,25 @@ Dienstag, 09. September 2025
   It mail an Herr Vollmer vom 23.04.2025
 
 Montag, 15. September 2025
-  09.30  Zusammenlegung Zusammenlegung der Datenbanken Meppen (Ost, West, Süd) (Vor Ort im B Osnabrück)
-  09.30  Nachrücker 1. Tag (Anmeldung für beide Tage) fällt aus!!
+  09.30  Morgengebet 
+  11.30  Hl. Messe
 ```
 
-### Template="2" (NEW: two-column layout)
+### Template="2" (two-column layout)
 
 ```
 | Dienstag, 09. September 2025                                    |
-|----------|-------------------------------------------------------|
-| 09.30    | Themenschulung Level 2: Fortgeschrittene/ Aufbau/... |
-|          | It mail an Herr Vollmer vom 23.04.2025                |
+|----------|------------------------------------------------------|
+| 09.30    | Hl. Messe                                            |
+|          | unterstützt vom Kirchenchor                          |
 
 | Montag, 15. September 2025                                      |
-|----------|-------------------------------------------------------|
-| 09.30    | Zusammenlegung Zusammenlegung der Datenbanken Meppen |
-| 09.30    | Nachrücker 1. Tag (Anmeldung für beide Tage) fällt aus!! |
+|----------|------------------------------------------------------|
+| 09.30    | Morgengebet                                          |
+| 11.30    | Hl. Messe                                            |
 ```
 
 ## Automatic Updates (Built-in)
-
-**🚀 NEW!** This plugin now includes a **built-in automatic update system** that connects directly to GitHub releases - no additional plugins required!
 
 ### How It Works
 
@@ -167,14 +165,6 @@ Montag, 15. September 2025
 - Updates include changelog from GitHub release notes
 - Clean installation preserves settings and configuration
 
-### Alternative: WordPress.org Repository
-
-For the most seamless updates, consider submitting the plugin to the WordPress.org repository:
-
-1. Review [Plugin Developer Handbook](https://developer.wordpress.org/plugins/)
-2. Submit for review at [WordPress.org Plugin Directory](https://wordpress.org/plugins/developers/)
-3. Once approved, updates will be automatic for all users
-
 ## Technical Documentation
 
 ### Plugin Architecture
@@ -190,16 +180,6 @@ For the most seamless updates, consider submitting the plugin to the WordPress.o
 - `get_template2_css()` - **NEW!** Generates CSS styling for Template="2" table layout
 - `format_leitung()` - Formats leadership names according to specifications
 - `handle_link()` - Processes HTTP links in event descriptions
-
-### Hooks and Filters
-
-Currently, the plugin doesn't expose WordPress hooks. Consider adding:
-
-```php
-// Future enhancement ideas
-$html = apply_filters('kaplan_before_output', $html, $data);
-do_action('kaplan_data_received', $data);
-```
 
 ### Custom CSS Classes
 
@@ -227,76 +207,17 @@ The plugin outputs HTML with these CSS classes for styling:
 3. Set up a local WordPress installation
 4. Configure KaPlan API access for testing
 
-## Changelog
+### Local Testing
 
-### Version 1.8.0 (2025-01-09) 🚀 **NEW TEMPLATE**
-- **🎉 MAJOR**: Added Template="2" with two-column table layout
-- **Enhanced**: Date headers now span full width (merged rows)
-- **Added**: Time column (left) with fixed width and proper alignment  
-- **Added**: Content column (right) with event details identical to Template="1"
-- **Added**: Built-in CSS styling for responsive table layout
-- **Added**: Built-in automatic update system via GitHub releases
-- **Security**: All HTML output properly escaped for WordPress standards
-- **Compatibility**: Fully backward compatible - Template="1" unchanged
-- **Author**: Hans-Joerg Joedike
+**Local WordPress Installation Path:**
+```
+~/Local Sites/kaplan-plugin-test/app/public/wp-content/plugins/kaplan-gottesdienste/
+```
 
-### Version 1.7.0 (2025-01-08)
-- **Stability**: Reverted complex features causing errors, focused on reliability
-- **Fixed**: Code stability improvements
-- **Enhanced**: Error handling and validation
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.6.4 (2025-01-07)
-- **Code Quality**: Consistent code formatting and indentation
-- **Improved**: Code readability and maintenance
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.6.3 (2025-01-07)
-- **Compatibility**: PHP 8+ compatibility improvements
-- **Security**: Enhanced security practices and input validation
-- **Fixed**: Modern PHP compatibility issues
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.6.2 (2025-01-07)
-- **Security**: Enhanced parameter validation
-- **Improved**: Error handling and user feedback
-- **Fixed**: Input sanitization improvements
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.6.1 (2024-04-26)
-- **Added**: Community events support (mode=GT)
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.6.0 (2024-04-18)
-- **Added**: Leadership display functionality (Leitung parameter)
-- **Enhanced**: Celebrant information display
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.5.1 (2023-04-20)
-- **Added**: TE_Zusatz2 field integration
-- **Improved**: Additional event information display
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.5.0 (2023-04-09)
-- **Enhanced**: Cancelled service display with church name
-- **Improved**: Service cancellation notifications
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.4.0 (2022-03-29)
-- **Added**: WordPress 5.9.2 compatibility
-- **Fixed**: Compatibility issues with latest WordPress version
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.3.x (2021-02-05)
-- **Added**: HTTP link processing in additional fields
-- **Enhanced**: Automatic conversion of URLs to "Internet" links
-- **Author**: Hans-Joerg Joedike
-
-### Version 1.0.0 (2021)
-- **Initial**: First release
-- **Added**: Basic KaPlan integration
-- **Added**: Church service display functionality
-- **Author**: Peter Hellerhoff
+To test locally, copy the plugin files to the above directory:
+```bash
+cp -r /path/to/plugin/* "~/Local Sites/kaplan-plugin-test/app/public/wp-content/plugins/kaplan-gottesdienste/"
+```
 
 ## Support
 
@@ -323,7 +244,7 @@ The plugin outputs HTML with these CSS classes for styling:
 ### Getting Help
 
 - **Plugin Authors**: Peter Hellerhoff & Hans-Joerg Joedike
-- **Website**: [https://www.kaplan-software.de](https://www.kaplan-software.de)
+- **Website**: [http://www.jlsoftware.de](http://www.jlsoftware.de/software/kaplan-gottesdienste)
 - **KaPlan Software**: Contact for API access and server configuration
 
 ## License
