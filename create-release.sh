@@ -80,8 +80,10 @@ fi
 
 # Update version in main plugin file
 echo "Updating version in plugin file..."
-sed -i.bak "s/Version: .*/Version: $VERSION/" kaplan_gottesdienste.php
-sed -i.bak "s/define('KAPLAN_PLUGIN_VERSION', '.*'/define('KAPLAN_PLUGIN_VERSION', '$VERSION'/" kaplan_gottesdienste.php
+# Use more precise patterns to avoid changing debug comments
+sed -i.bak "s/^\( \* Version: \).*/\1$VERSION/" kaplan_gottesdienste.php
+sed -i.bak "s/define('KAPLAN_PLUGIN_VERSION', '.*')/define('KAPLAN_PLUGIN_VERSION', '$VERSION')/" kaplan_gottesdienste.php
+rm -f *.bak
 
 # Commit the version update
 echo "Committing version update..."
@@ -97,7 +99,7 @@ git push origin "v$VERSION"
 # Create ZIP file for release
 echo "Creating ZIP file..."
 ZIP_NAME="kaplan-gottesdienste-$VERSION.zip"
-zip -r "$ZIP_NAME" . -x "*.git*" "*.DS_Store*" "Tools/*" "*.zip" "*.sh" "*.md" ".kombai/*" ".qodo/*" "~*" "create-release.sh"
+zip -r "$ZIP_NAME" . -x "*.git*" "*.DS_Store*" "Tools/*" "*.zip" "*.sh" "*.md" ".kombai/*" ".qodo/*" "~*" "create-release.sh" "*.bak"
 
 # Check if GitHub CLI is available
 echo "Checking for GitHub CLI..."
@@ -121,41 +123,54 @@ if command -v gh >/dev/null 2>&1; then
         NOTES_ARG="--notes-file $NOTES_FILE"
     else
         echo "📝 Creating basic release notes..."
-        NOTES_ARG="--notes \"Version $VERSION - $TITLE\n\nDownload the plugin ZIP file from the assets below.\""
+        # Create temporary notes file to avoid shell escaping issues
+        TEMP_NOTES=".temp-release-notes.md"
+        cat > "$TEMP_NOTES" << EOF
+Version $VERSION - $TITLE
+
+Download the plugin ZIP file from the assets below.
+EOF
+        NOTES_ARG="--notes-file $TEMP_NOTES"
     fi
     
     # Create GitHub release
     echo "🚀 Creating GitHub release..."
-    RELEASE_URL=$(gh release create "v$VERSION" --title "KaPlan Gottesdienste v$VERSION" $NOTES_ARG 2>/dev/null || true)
-    
-    if [ $? -eq 0 ]; then
+    if gh release create "v$VERSION" --title "KaPlan Gottesdienste v$VERSION" $NOTES_ARG "$ZIP_NAME"; then
         echo "✅ GitHub release created successfully!"
+        echo "✅ ZIP file uploaded successfully!"
         
-        # Upload ZIP file to release
-        echo "📦 Uploading ZIP file to release..."
-        gh release upload "v$VERSION" "$ZIP_NAME"
-        
-        if [ $? -eq 0 ]; then
-            echo "✅ ZIP file uploaded successfully!"
-            
-            # Get release URL
-            RELEASE_URL=$(gh release view "v$VERSION" --json url --jq '.url')
-            
-            echo ""
-            echo "🎉 RELEASE COMPLETED SUCCESSFULLY!"
-            echo ""
-            echo "📦 ZIP file created: $ZIP_NAME"
-            echo "🏷️  Tag created and pushed: v$VERSION"
-            echo "🌐 GitHub release: $RELEASE_URL"
-            echo ""
-            echo "🔄 WordPress sites will receive update notifications within 12 hours!"
-        else
-            echo "⚠️  Failed to upload ZIP file. Please upload manually."
-            echo "   Go to: https://github.com/hansjoergJL/kaplan-gottesdienste/releases/tag/v$VERSION"
+        # Clean up temporary notes file if created
+        if [ -n "$TEMP_NOTES" ] && [ -f "$TEMP_NOTES" ]; then
+            rm -f "$TEMP_NOTES"
         fi
+
+        # Get release URL
+        RELEASE_URL=$(gh release view "v$VERSION" --json url --jq '.url')
+
+        echo ""
+        echo "🎉 RELEASE COMPLETED SUCCESSFULLY!"
+        echo ""
+        echo "📦 ZIP file created: $ZIP_NAME"
+        echo "🏷️  Tag created and pushed: v$VERSION"
+        echo "🌐 GitHub release: $RELEASE_URL"
+        echo ""
+        echo "🔄 WordPress sites will receive update notifications within 12 hours!"
     else
-        echo "⚠️  Failed to create GitHub release. Falling back to manual steps..."
-        show_manual_steps
+        echo "❌ Failed to create GitHub release!"
+        
+        # Clean up temporary notes file if created
+        if [ -n "$TEMP_NOTES" ] && [ -f "$TEMP_NOTES" ]; then
+            rm -f "$TEMP_NOTES"
+        fi
+        
+        echo "   Please create the release manually:"
+        echo "   1. Go to: https://github.com/hansjoergJL/kaplan-gottesdienste/releases"
+        echo "   2. Click 'Create a new release'"
+        echo "   3. Select tag: v$VERSION"
+        echo "   4. Title: KaPlan Gottesdienste v$VERSION"
+        echo "   5. Upload the ZIP file: $ZIP_NAME"
+        echo "   6. Click 'Publish release'"
+        exit 1
     fi
 else
     echo "⚠️  GitHub CLI not found. Showing manual steps..."
