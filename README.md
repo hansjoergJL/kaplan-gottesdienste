@@ -2,9 +2,9 @@
 
 **Verbinden Sie Ihr KaPlan-System nahtlos mit Ihrer Website** • Zeigen Sie aktuelle Gottesdienste und Gemeindeveranstaltungen automatisch auf Ihrer WordPress-Website an.
 
-[![Version](https://img.shields.io/badge/Version-1.8.5-blue.svg)](https://github.com/hansjoergJL/kaplan-gottesdienste/releases)
+[![Version](https://img.shields.io/badge/Version-1.9.0-blue.svg)](https://github.com/hansjoergJL/kaplan-gottesdienste/releases)
 [![WordPress](https://img.shields.io/badge/WordPress-2.7+-green.svg)](https://wordpress.org/)
-[![PHP](https://img.shields.io/badge/PHP-5.5+-purple.svg)](https://php.net/)
+[![PHP](https://img.shields.io/badge/PHP-7.4+-purple.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/License-GPL%20v2-orange.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![Downloads](https://img.shields.io/github/downloads/hansjoergJL/kaplan-gottesdienste/total.svg)](https://github.com/hansjoergJL/kaplan-gottesdienste/releases)
 
@@ -156,7 +156,13 @@ Fügen Sie den Shortcode in der Ausgabeseite für Gottesdienste (oder Gemeindete
 
 ## 🆕 **Was ist neu?**
 
-### **Version 1.8.5 (Aktuell)**
+### **Version 1.9.0 (Aktuell)**
+🔧 **KRITISCH**: PHP 7.4-8.3 Kompatibilität behoben  
+✅ Plugin funktioniert jetzt sowohl auf PHP 7.4.33 als auch PHP 8.3+  
+🆕 **Mindest-PHP-Version** auf 7.4 erhöht (war 5.5)  
+🚀 **Bessere Sicherheit und Performance** durch moderne PHP-Features  
+
+### **Version 1.8.5**
 🔧 Smart Quotes Normalisierung  
 ✅ Plugin funktioniert jetzt auch mit kopierten Shortcodes  
 ✅ Bessere Fehlerbehandlung bei Attributen  
@@ -165,7 +171,7 @@ Fügen Sie den Shortcode in der Ausgabeseite für Gottesdienste (oder Gemeindete
 ### **Version 1.8.4**
 🆕 **Neues 3-Spalten-Layout** (Template 3)  
 📱 **Verbesserte mobile Darstellung**  
-🎨 **Modernisierte CSS-Styles**  
+🎨 **Modernisierte CSS-Styles**
 
 [📋 **Alle Versionshinweise anzeigen**](https://github.com/hansjoergJL/kaplan-gottesdienste/releases)
 
@@ -191,7 +197,7 @@ Sind Sie Entwickler? Contributions sind willkommen!
 | Anforderung | Minimum | Empfohlen |
 |-------------|---------|-----------|
 | **WordPress** | 2.7+ | 6.0+ |
-| **PHP** | 5.5+ | 8.0+ |
+| **PHP** | 7.4+ | 8.0+ |
 | **KaPlan** | API-Zugang | Aktuelle Version |
 | **Internet** | HTTPS-Verbindung | Stabile Verbindung |
 

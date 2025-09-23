@@ -5,6 +5,27 @@ Alle wichtigen Änderungen am KaPlan Gottesdienste Plugin werden in dieser Datei
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2025-09-23
+
+### 🔧 Behoben
+- **KRITISCH**: DateTime_german::format() Signatur für PHP 7.4 ↔ 8.3 Kompatibilität
+  - Entfernt Typ-Hinweise (string $format): string die in PHP 7.4 Fatal Errors verursachten
+  - Plugin funktioniert jetzt sowohl auf PHP 7.4.33 als auch PHP 8.3+
+  - Behält vollständige Funktionalität bei
+
+### 🆕 Neu  
+- **Mindest-PHP-Version** auf 7.4 erhöht (war 5.5)
+  - Bessere Sicherheit und Performance
+  - Moderne PHP-Features verfügbar
+  - Längerfristige Wartbarkeit
+
+### 📚 Technisch
+- Plugin-Version auf 1.9.0 erhöht
+- KAPLAN_PLUGIN_VERSION Konstante aktualisiert
+- Dokumentation für neue PHP-Anforderungen
+
+---
+
 ## [1.8.5] - 2025-09-21
 
 ### 🔧 Behoben

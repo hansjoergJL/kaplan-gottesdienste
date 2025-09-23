@@ -5,7 +5,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Plugin Name:  KaPlan Gottesdienste
  * Plugin URI: http://www.jlsoftware.de/software/kaplan-plugin/
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.8.9
+ * Version: 1.9.0
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: http://www.jlsoftware.de/
  * License: GPL2 or newer
@@ -13,7 +13,7 @@ defined('ABSPATH') or die("Please use as described.");
  * Text Domain:  kaplan-import
  * GitHub Plugin URI: hansjoergJL/kaplan-gottesdienste
  * GitHub Branch: main
- * Requires PHP: 5.5
+ * Requires PHP: 7.4
  * Requires WP: 2.7
  */
 
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('KAPLAN_PLUGIN_VERSION', '1.8.9');
+define('KAPLAN_PLUGIN_VERSION', '1.9.0');
 define('KAPLAN_PLUGIN_FILE', __FILE__);
 define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -668,7 +668,12 @@ class kaplan_kalender {
 
 class DateTime_german extends DateTime {
 
-    public function format(string $format): string {
+    /**
+     * Format the date/time value as a string
+     * @param string $format The format string
+     * @return string The formatted date string
+     */
+    public function format($format) {
         return 
             str_replace(
                 array('January','February','March','May','June','July','October','December'),

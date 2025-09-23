@@ -20,6 +20,20 @@
 Always use the Local Sites path when working with WordPress configuration files and debugging.
 
 ## Plugin Fix History
+### 2025-09-23: Fixed PHP 7.4-8.3 Compatibility (Version 1.9.0)
+- **File**: `kaplan_gottesdienste.php`
+- **Line**: 671 (class DateTime_german)
+- **Error**: PHP 7.4 Fatal Error due to typed method signature incompatible with parent DateTime::format()
+- **Fix**: Removed type hints from DateTime_german::format($format) method signature
+- **Version**: Updated to 1.9.0, raised minimum PHP to 7.4
+- **Status**: ✅ Fixed for PHP 7.4-8.3 compatibility
+### 2025-09-23: Fixed PHP 8.4 Fatal Error
+- **File**: `kaplan_gottesdienste.php`
+- **Line**: 292, 670
+- **Error**: PHP syntax error in debug comment (missing closing `-->`) and deprecated return type
+- **Fix**: Added proper closing comment syntax and explicit return type declaration
+- **Version**: Updated to 1.8.9
+- **Status**: ✅ Fixed for PHP 8.4.10 compatibility
 ### 2025-09-21: Fixed PHP Syntax Error
 - **File**: `kaplan_gottesdienste.php`
 - **Line**: 657
