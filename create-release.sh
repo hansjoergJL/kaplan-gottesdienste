@@ -78,20 +78,38 @@ if [ ! -f "kaplan_gottesdienste.php" ]; then
     exit 1
 fi
 
-# Update version in main plugin file
-echo "Updating version in plugin file..."
-# Use more precise patterns to avoid changing debug comments
-sed -i.bak "s/^\( \* Version: \).*/\1$VERSION/" kaplan_gottesdienste.php
-sed -i.bak "s/define('KAPLAN_PLUGIN_VERSION', '.*')/define('KAPLAN_PLUGIN_VERSION', '$VERSION')/" kaplan_gottesdienste.php
-rm -f *.bak
+# Check if version is already set correctly
+echo "Checking current version in plugin file..."
+CURRENT_VERSION=$(grep "^\s*\*\s*Version:" kaplan_gottesdienste.php | sed 's/.*Version:\s*//' | tr -d ' ')
+CURRENT_CONST_VERSION=$(grep "define('KAPLAN_PLUGIN_VERSION'" kaplan_gottesdienste.php | sed "s/.*'\([^']*\)'.*/\1/")
 
-# Commit the version update
-echo "Committing version update..."
-git add kaplan_gottesdienste.php
-git commit -m "Version $VERSION - $TITLE"
+if [ "$CURRENT_VERSION" = "$VERSION" ] && [ "$CURRENT_CONST_VERSION" = "$VERSION" ]; then
+    echo "✅ Version $VERSION already set correctly in plugin file - skipping update"
+    SKIP_COMMIT=true
+else
+    echo "Updating version in plugin file from $CURRENT_VERSION to $VERSION..."
+    # Use more precise patterns to avoid changing debug comments
+    sed -i.bak "s/^\( \* Version: \).*/\1$VERSION/" kaplan_gottesdienste.php
+    sed -i.bak "s/define('KAPLAN_PLUGIN_VERSION', '.*')/define('KAPLAN_PLUGIN_VERSION', '$VERSION')/" kaplan_gottesdienste.php
+    rm -f *.bak
+    SKIP_COMMIT=false
+fi
+
+# Commit the version update only if changes were made
+if [ "$SKIP_COMMIT" != "true" ]; then
+    echo "Committing version update..."
+    git add kaplan_gottesdienste.php
+    git commit -m "Version $VERSION - $TITLE"
+else
+    echo "No version changes to commit"
+fi
 
 # Create and push tag
 echo "Creating and pushing tag v$VERSION..."
+if git tag -l | grep -q "^v$VERSION$"; then
+    echo "Warning: Tag v$VERSION already exists locally. Deleting and recreating..."
+    git tag -d "v$VERSION"
+fi
 git tag "v$VERSION" -m "Version $VERSION - $TITLE"
 git push origin main
 git push origin "v$VERSION"
