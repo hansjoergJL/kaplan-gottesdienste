@@ -8,7 +8,7 @@ $kaplan_plugin_version = '1.9.3';
  * Plugin Name:  KaPlan Gottesdienste
  * Plugin URI: http://www.jlsoftware.de/software/kaplan-plugin/
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.9.1
+ * Version: 1.9.3
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: http://www.jlsoftware.de/
  * License: GPL2 or newer
