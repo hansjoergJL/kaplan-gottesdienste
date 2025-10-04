@@ -2,7 +2,7 @@
 defined('ABSPATH') or die("Please use as described.");
 
 // Global version constant
-$kaplan_plugin_version = '1.9.2';
+$kaplan_plugin_version = '1.9.3';
 
 /**
  * Plugin Name:  KaPlan Gottesdienste
@@ -53,6 +53,8 @@ function kaplan_init_updater() {
     }
 }
 
+// Version 1.9.3  [Jö] 2025-10-04  Dienste, Liturg
+// Version 1.9.2  [Jö] 2025-10-04  Fixed guest Leitung display in Template 1,2,3
 // Version 1.9.1  [Jö] 2025-09-30  Added comment to preserve deprecation warning in DateTime_german::format method
 // Version 1.9.0  [Jö] 2025-09-23  Template "3" Improvements
 // Version 1.8.9  [Jö] 2025-09-23  CRITICAL FIX: PHP 8.4 compatibility - fixed syntax error in debug comment and return type
@@ -90,6 +92,7 @@ class kaplan_kalender {
             . '&mode=' . $atts['mode']
             . '&options=' . ($atts['options'] ? 'L' . $atts['options'] : 'L')
             . '&type=json&req=plugin'
+            . ($atts['dienste'] ? ('&dienste=' . $atts['dienste']) : '')
             . ($atts['days'] ? ('&days=' . $atts['days']) : '');
         return $req;
     }
@@ -119,7 +122,7 @@ class kaplan_kalender {
     
     // Formatierung des Leitungsnamens
     // 
-    private static function format_leitung($Format, $Kuerzel, $Titel, $Vorname, $Nachname, $Ordensname, $LeitungGast, $Organisation) {
+    private static function format_leitung($Format, $Kuerzel, $Titel, $Vorname, $Nachname, $Ordensname, $LeitungGast, $Organisation, $Liturg) {
         // Ausgabeformat Leitung: K / N / VN / V.N / TN / TVN / TV.N / O (T=Titel V=Vorname N=Nachname K=Kuerzel, O=Organisation)
         if ('' . $Format == '') {
             return '';
@@ -160,6 +163,11 @@ class kaplan_kalender {
             if ($Ret != '')
                 $Ret .= ', ';
             $Ret .= $LeitungGast;
+        }
+        if ($Liturg != '') {
+            if ($Ret != '')
+                $Ret .= ', ';
+            $Ret .= $Liturg;
         }
         return $Ret;
     }
@@ -302,9 +310,9 @@ class kaplan_kalender {
         
         if ($debug) {
             global $kaplan_plugin_version;
-            $debug_info .= '<!-- KaPlan Debug Start -->' . "\n";
-            $debug_info .= '<!-- Plugin Version: ' . $kaplan_plugin_version . ' -->' . "\n";
-            $debug_info .= '<!-- Parameters: ' . json_encode($atts) . ' -->' . "\n";
+            $debug_info .= '-- KaPlan Debug Start --' . "<br>";
+            $debug_info .= '-- Plugin Version: ' . $kaplan_plugin_version . ' --' . "<br>";
+            $debug_info .= '-- Parameters: ' . json_encode($atts) . ' --' . "<br>";
         }
         
         // Validate required parameters
@@ -322,7 +330,7 @@ class kaplan_kalender {
         $options = $atts['options'] ?? '';
         
         if ($debug) {
-            $debug_info .= '<!-- URL: ' . esc_html($url) . ' -->\n';
+            $debug_info .= '-- URL: ' . esc_html($url) . ' --' . "<br>";
         }
         
         // Use WordPress HTTP API for better compatibility
@@ -335,7 +343,7 @@ class kaplan_kalender {
         if (is_wp_error($response)) {
             $error_msg = '<div class="kaplan-export"><p style="color: red;">Fehler: Verbindung zum KaPlan-Server fehlgeschlagen. ' . esc_html($response->get_error_message()) . '</p></div>';
             if ($debug) {
-                $error_msg .= '<!-- Debug Error: ' . esc_html($response->get_error_message()) . ' -->\n';
+                $error_msg .= '-- Debug Error: ' . esc_html($response->get_error_message()) . ' --' . "<br>";
             }
             return $debug_info . $error_msg;
         }
@@ -347,27 +355,27 @@ class kaplan_kalender {
         if (empty($json)) {
             $error_msg = '<div class="kaplan-export"><p style="color: red;">Fehler: Keine Antwort vom KaPlan-Server erhalten.</p></div>';
             if ($debug) {
-                $error_msg .= '<!-- Debug: Empty response body -->\n';
+                $error_msg .= '-- Debug: Empty response body --' . "<br>";
             }
             return $debug_info . $error_msg;
         }
         
         if ($debug) {
-            $debug_info .= '<!-- Response length: ' . strlen($json) . ' -->\n';
+            $debug_info .= '-- Response length: ' . strlen($json) . ' --' . "<br>";
         }
         
         $data = json_decode($json);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $error_msg = '<div class="kaplan-export"><p style="color: red;">Fehler: Ungültige Antwort vom KaPlan-Server.</p></div>';
             if ($debug) {
-                $error_msg .= '<!-- Debug JSON Error: ' . json_last_error_msg() . ' -->\n';
+                $error_msg .= '-- Debug JSON Error: ' . json_last_error_msg() . ' --' . "<br>";
             }
             return $debug_info . $error_msg;
         }
         // $data enthält nun alle Termine als Array von Objekten
         
         if ($debug) {
-            $debug_info .= '<!-- Records found: ' . (is_array($data) ? count($data) : 'Not an array') . ' -->\n';
+            $debug_info .= '-- Records found: ' . (is_array($data) ? count($data) : 'Not an array') . ' --' . "<br>";
         }
         
         $Template = $atts['template'] ?? '1';  // Ensure default Template=1
@@ -418,7 +426,8 @@ class kaplan_kalender {
                         $PE_Ordensname = (isset($termin->PE_Ordensname) ? $termin->PE_Ordensname : '');
                         $TE_LeitungGast = (isset($termin->TE_LeitungGast) ? $termin->TE_LeitungGast : '');
                         $PE_Organisation = '';
-                        $Ltg = self::format_leitung($FormatLeitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $TE_LeitungGast, $PE_Organisation);
+                        $Liturg = (isset($termin->Liturg) ? $termin->Liturg : '');
+                        $Ltg = self::format_leitung($FormatLeitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $TE_LeitungGast, $PE_Organisation, $Liturg);
                     } else {
                         $Ltg = '';
                     }
@@ -442,7 +451,8 @@ class kaplan_kalender {
                         $PE_Ordensname = (isset($termin->Ordensname) ? $termin->Ordensname : '');
                         $PE_Organisation = (isset($termin->Organisation) ? $termin->Organisation : '');
                         $TE_LeitungGast = '';
-                        $Ltg = self::format_leitung($FormatLeitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $TE_LeitungGast, $PE_Organisation);
+                        $Liturg = '';
+                        $Ltg = self::format_leitung($FormatLeitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $TE_LeitungGast, $PE_Organisation, $Liturg);
                     } else {
                         $Ltg = '';
                     }
@@ -673,7 +683,7 @@ class kaplan_kalender {
         $html .= '</div>';
         
         if ($debug) {
-            $html .= '<!-- KaPlan Debug End -->\n';
+            $html .= '<br>-- KaPlan Debug End --' . "<br>";
         }
 
         return $html;
@@ -722,8 +732,8 @@ function kaplan_kalender($atts = [], $content = null, $tag = '') {
     foreach ($atts as $k => $v) {
         if (is_string($v)) {
             $v = str_replace(
-                ['“','”','„','‘','’','‹','›'],
-                ['"','"','"','\'','\'','\'','\''],
+                ['"', '"', '„', "'", "'", '‹', '›', '″', '‴', '‚', '‛', '〝', '〞', '〟', '﹁', '﹂', '﹃', '﹄', '＂', '＇'],
+                ['"', '"', '"', '\'', '\'', '\'', '\'', '"', '"', '\'', '\'', '"', '"', '"', '\'', '\'', '"', '"', '"', '\''],
                 $v
             );
             // Trim surrounding quotes/spaces
