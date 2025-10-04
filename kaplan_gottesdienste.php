@@ -2,7 +2,7 @@
 defined('ABSPATH') or die("Please use as described.");
 
 // Global version constant
-$kaplan_plugin_version = '1.9.1';
+$kaplan_plugin_version = '1.9.2';
 
 /**
  * Plugin Name:  KaPlan Gottesdienste
@@ -84,7 +84,7 @@ class kaplan_kalender {
         if (substr($req, -1, 1) != '/') {
             $req .= '/';
         }
-        $leitung = $atts['leitung'];  // Ausgabeformat Leitung: K / N / VN / V.N / TVN / TV.N (T=Titel V=Vorname N=Nachname K=Kuerzel)
+        $FormatLeitung = $atts['leitung'];  // Ausgabeformat Leitung: K / N / VN / V.N / TVN / TV.N (T=Titel V=Vorname N=Nachname K=Kuerzel)
         $req .= 'get.asp?Arbeitsgruppe=' . $atts['arbeitsgruppe']
             . '&Code=' . $atts['code']
             . '&mode=' . $atts['mode']
@@ -396,7 +396,7 @@ class kaplan_kalender {
                 // $termin ist ein Objekt mit den Datenfeldern aus der JSON Abfrage
                 
                 $SkipThisEntry = false;  // Flag for VT mode duplicates
-                $Leitung = '' . $atts['leitung'];  // Ausgabeformat Leitung: K / N / VN / V.N / TVN / TV.N (T=Titel V=Vorname N=Nachname K=Kuerzel)
+                $FormatLeitung = '' . $atts['leitung'];  // Ausgabeformat Leitung: K / N / VN / V.N / TVN / TV.N (T=Titel V=Vorname N=Nachname K=Kuerzel)
                 if ($atts['mode'] == 'A' || $atts['mode'] == 'B') {
                     $Datum = $termin->TE_Datum;
                     $Tagesbez = (isset($termin->Tagesbez) ? $termin->Tagesbez : '');
@@ -410,15 +410,15 @@ class kaplan_kalender {
                     }
                     $Zusatz2 = (isset($termin->TE_Zusatz2) ? $termin->TE_Zusatz2 : '');
                     $Raum = $termin->RA_Bez;
-                    if ($Leitung != '') {
+                    if ($FormatLeitung != '') {
                         $PE_Kuerzel = (isset($termin->PE_Kuerzel) ? $termin->PE_Kuerzel : '');
                         $PE_Titel = (isset($termin->PE_Titel) ? $termin->PE_Titel : '');
                         $PE_Vorname = (isset($termin->PE_Vorname) ? $termin->PE_Vorname : '');
                         $PE_Nachname = (isset($termin->PE_Nachname) ? $termin->PE_Nachname : '');
                         $PE_Ordensname = (isset($termin->PE_Ordensname) ? $termin->PE_Ordensname : '');
-                        $PE_LeitungGast = (isset($termin->PE_LeitungGast) ? $termin->PE_LeitungGast : '');
+                        $TE_LeitungGast = (isset($termin->TE_LeitungGast) ? $termin->TE_LeitungGast : '');
                         $PE_Organisation = '';
-                        $Ltg = self::format_leitung($Leitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $PE_LeitungGast, $PE_Organisation);
+                        $Ltg = self::format_leitung($FormatLeitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $TE_LeitungGast, $PE_Organisation);
                     } else {
                         $Ltg = '';
                     }
@@ -434,15 +434,15 @@ class kaplan_kalender {
                     // "Gebaeude": "Jugendheim Nordstadt", 
                     $Zusatz2 = (isset($termin->Langtext) ? $termin->Langtext : '');  // "Langtext": "Diesmal etwas ganz Besonderes: Kaffee & Kuchen!", 
                     $Raum = $termin->Raum;  // "Raum": "Jugendheim -  Gruppenraum EG 1", 
-                    if ($Leitung != '') {
+                    if ($FormatLeitung != '') {
                         $PE_Kuerzel = '';
                         $PE_Titel = (isset($termin->Titel) ? $termin->Titel : '');
                         $PE_Vorname = (isset($termin->PE_Vorname) ? $termin->PE_Vorname : '');
                         $PE_Nachname = (isset($termin->Nachname) ? $termin->Nachname : '');
                         $PE_Ordensname = (isset($termin->Ordensname) ? $termin->Ordensname : '');
                         $PE_Organisation = (isset($termin->Organisation) ? $termin->Organisation : '');
-                        $PE_LeitungGast = '';
-                        $Ltg = self::format_leitung($Leitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $PE_LeitungGast, $PE_Organisation);
+                        $TE_LeitungGast = '';
+                        $Ltg = self::format_leitung($FormatLeitung, $PE_Kuerzel, $PE_Titel, $PE_Vorname, $PE_Nachname, $PE_Ordensname, $TE_LeitungGast, $PE_Organisation);
                     } else {
                         $Ltg = '';
                     }
