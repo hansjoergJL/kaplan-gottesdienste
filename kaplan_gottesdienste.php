@@ -1,11 +1,14 @@
 <?php
 defined('ABSPATH') or die("Please use as described.");
 
+// Global version constant
+$kaplan_plugin_version = '1.9.1';
+
 /**
  * Plugin Name:  KaPlan Gottesdienste
  * Plugin URI: http://www.jlsoftware.de/software/kaplan-plugin/
  * Description: Anzeige aktueller Gottesdienste aus KaPlan
- * Version: 1.9.0
+ * Version: 1.9.1
  * Author: Peter Hellerhoff & Hans-Joerg Joedike
  * Author URI: http://www.jlsoftware.de/
  * License: GPL2 or newer
@@ -23,7 +26,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('KAPLAN_PLUGIN_VERSION', '1.9.0');
+define('KAPLAN_PLUGIN_VERSION', $kaplan_plugin_version);
 define('KAPLAN_PLUGIN_FILE', __FILE__);
 define('KAPLAN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('KAPLAN_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -50,6 +53,8 @@ function kaplan_init_updater() {
     }
 }
 
+// Version 1.9.1  [Jö] 2025-09-30  Added comment to preserve deprecation warning in DateTime_german::format method
+// Version 1.9.0  [Jö] 2025-09-23  Template "3" Improvements
 // Version 1.8.9  [Jö] 2025-09-23  CRITICAL FIX: PHP 8.4 compatibility - fixed syntax error in debug comment and return type
 // Version 1.8.5  [Jö] 2025-09-21  CRITICAL FIX: Smart quotes normalization in shortcode attributes
 // Version 1.8.4  [Jö] 2025-01-21  Updated version requirements: PHP 5.5, WordPress 2.7
@@ -119,37 +124,44 @@ class kaplan_kalender {
         if ('' . $Format == '') {
             return '';
         }
+        $Ret = $Nachname;  // Default
         if ($Format == 'K') {  // Kürzel
-            return $Kuerzel;
+            $Ret = $Kuerzel;
         }
-        if ($Ordensname) {
-            return trim($Titel . ' ' . $Ordensname);
+        else if ($Ordensname) {
+            $Ret =  trim($Titel . ' ' . $Ordensname);
         }
-        if ($Format == 'N') {  // Nachname
-            return $Nachname;
+        else if ($Format == 'N') {  // Nachname
+            $Ret = $Nachname;
         }
-        if ($Format == 'VN') {  // Vorname Nachname
-            return trim($Vorname . ' ' . $Nachname);
+        else if ($Format == 'VN') {  // Vorname Nachname
+            $Ret = trim($Vorname . ' ' . $Nachname);
         }
-        if ($Format == 'V.N') {  // V. Nachname
-            return trim(substr($Vorname, 0, 1) . '. ' . $Nachname, ' .');
+        else if ($Format == 'V.N') {  // V. Nachname
+            $Ret = trim(substr($Vorname, 0, 1) . '. ' . $Nachname, ' .');
         }
-        if ($Format == 'TN') {   // Titel Nachname
-            return trim($Titel . ' ' . $Nachname);
+        else if ($Format == 'TN') {   // Titel Nachname
+            $Ret = trim($Titel . ' ' . $Nachname);
         }
-        if ($Format == 'TVN') {   // Titel Vorname Nachname
-            return trim($Titel . ' ' . $Vorname . ' ' . $Nachname);
+        else if ($Format == 'TVN') {   // Titel Vorname Nachname
+            $Ret = trim($Titel . ' ' . $Vorname . ' ' . $Nachname);
         }
-        if ($Format == 'TV.N') {  // Titel V. Nachname
-            return trim($Titel . ' ' . substr($Vorname . ' ', 0, 1) . '. ' . $Nachname, ' .');
+        else if ($Format == 'TV.N') {  // Titel V. Nachname
+            $Ret = trim($Titel . ' ' . substr($Vorname . ' ', 0, 1) . '. ' . $Nachname, ' .');
         }
-        if ($Format == 'O') {  // Organisation
+        else if ($Format == 'O') {  // Organisation
             if ($Organisation != '') {
-                return $Organisation;
+                $Ret = $Organisation;
             }
-            return trim(substr($Vorname . ' ', 0, 1) . '. ' . $Nachname, ' .');
+            else
+                $Ret = trim(substr($Vorname . ' ', 0, 1) . '. ' . $Nachname, ' .');
         }
-        return $Nachname;
+        if ($LeitungGast != '') {
+            if ($Ret != '')
+                $Ret .= ', ';
+            $Ret .= $LeitungGast;
+        }
+        return $Ret;
     }
     
     // Polyfill für str_ends_with (PHP 8.0+)
@@ -289,8 +301,9 @@ class kaplan_kalender {
         $debug_info = '';
         
         if ($debug) {
+            global $kaplan_plugin_version;
             $debug_info .= '<!-- KaPlan Debug Start -->' . "\n";
-            $debug_info .= '<!-- Plugin Version: 1.8.9 -->' . "\n";
+            $debug_info .= '<!-- Plugin Version: ' . $kaplan_plugin_version . ' -->' . "\n";
             $debug_info .= '<!-- Parameters: ' . json_encode($atts) . ' -->' . "\n";
         }
         
@@ -313,9 +326,10 @@ class kaplan_kalender {
         }
         
         // Use WordPress HTTP API for better compatibility
+        global $kaplan_plugin_version;
         $response = wp_remote_get($url, [
             'timeout' => 10,
-            'user-agent' => 'KaPlan WordPress Plugin/1.8.4'
+            'user-agent' => 'KaPlan WordPress Plugin/' . $kaplan_plugin_version
         ]);
         
         if (is_wp_error($response)) {
@@ -673,6 +687,8 @@ class DateTime_german extends DateTime {
      * @param string $format The format string
      * @return string The formatted date string
      */
+    // DO NOT FIX: Keep this method signature as-is to maintain backwards compatibility.
+    // The deprecation warning about return type compatibility is intentionally ignored.
     public function format($format) {
         return 
             str_replace(
